@@ -1,0 +1,29 @@
+repos:
+    -   repo: https://github.com/pre-commit/pre-commit-hooks
+        rev: v2.4.0
+        hooks:
+        - id: check-merge-conflict
+        - id: check-added-large-files
+        - id: detect-private-key
+    -   repo: https://github.com/pre-commit/mirrors-yapf
+        rev: v0.31.0  # Use the sha / tag you want to point at
+        hooks:
+        -   id: yapf
+    -   repo: https://github.com/pre-commit/mirrors-isort
+        rev: v5.10.1  # Use the revision sha / tag you want to point at
+        hooks:
+        -   id: isort
+    -   repo: https://github.com/myint/autoflake
+        rev: v1.4
+        hooks:
+        -   id: autoflake
+            name: autoflake
+            entry: autoflake --in-place
+            language: python
+            files: \.py$
+            
+    -   repo: https://github.com/pycqa/flake8
+        rev: 4.0.1
+        hooks:
+        - id: flake8
+
