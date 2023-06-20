@@ -1,9 +1,0 @@
-selenium
-pdfminer3
-spacy_spanish_lemmatizer
-pathos
-es-lemmatizer
-nltk
-sklearn
-pandas
-pre-commit
