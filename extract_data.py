@@ -1,18 +1,23 @@
-import click
+import json
 
 from src.data_scrapper import JurisdictionScrapper
 
-CONFIG_PATH = "scrapper_config.yaml"
+SCRAPPER_ARGS_PATH = "scrapper_config.yaml"
 
 
-
-def extract_data(config_path):
+def extract_data():
+    
+    # load scrapper arguments
+    with open(SCRAPPER_ARGS_PATH) as f:
+        args = json.load(f)
+    
+    # scrappe data
     scrapper = JurisdictionScrapper()
-
+    scrapper(**args)
 
 
 
 
 
 if __name__ == '__main__':
-    extract_data("10/12/2020")
+    extract_data()

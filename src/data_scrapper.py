@@ -1,7 +1,8 @@
 # Web Scraping from dynamic platform: CENDOJ
 
-from urllib.request import urlopen
 import os
+from urllib.request import urlopen
+
 import numpy as np
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -12,9 +13,12 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 ROOT_URL = "https://www.poderjudicial.es"
 
+
 class JurisdictionScrapper():
     def __init__(self):
-        pass
+        # num requests will always be 4 as it is the maximum number of pages
+        # in one search
+        self.num_requests = 4
 
     def __call__(self, date, textual_query, num_searches, output_path):
 
@@ -28,7 +32,7 @@ class JurisdictionScrapper():
 
             date, elements = get_links(root=ROOT_URL,
                                        name=textual_query,
-                                       num_requests=4,
+                                       num_requests=self.num_requests,
                                        date=date,
                                        fecha_state=state)
 
@@ -139,7 +143,7 @@ def get_links(root, name, num_requests, date, fecha_state=False):
     search = driver.find_element_by_id("frmBusquedajurisprudencia_TEXT")
     search.send_keys(name)
     search.send_keys(Keys.RETURN)
-    
+
     last_date = None
     link_list = list()
     for i in range(int(num_requests)):
@@ -175,4 +179,3 @@ def get_links(root, name, num_requests, date, fecha_state=False):
 
     driver.quit()
     return last_date, link_list
-
