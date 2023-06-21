@@ -5,6 +5,7 @@ import pandas as pd
 from src.data_preprocessor import JurisdictionPreprocessor
 from src.data_scrapper import JurisdictionScrapper
 from src.data_storage import JurisdictionDataBaseManager
+from src.models.tfidf_model import TFIDFModel
 
 ARGS_PATH = "arguments.json"
 
@@ -34,6 +35,12 @@ def main():
     db_manager.create_db(table_name, cur)
     # insert data
     df_records.to_sql(table_name, conn)
+
+    data = df_records["clean_fundamentos"].tolist()
+
+    # generate TF-IDF model
+    tfidf_model = TFIDFModel(data)
+    tfidf_model.fit()
 
 
 if __name__ == '__main__':

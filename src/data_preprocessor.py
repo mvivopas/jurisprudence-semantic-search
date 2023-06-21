@@ -30,7 +30,8 @@ class JurisdictionPreprocessor():
         dict_information = self.extract_information_from_doc(text)
 
         # Basic cleaning
-        clean_corpus = self.basic_doc_cleaning(dict_information["fundamentos"])
+        clean_corpus = self.basic_text_cleaning(
+            dict_information["fundamentos"])
 
         # Tokenize and lemmatize
         std_corpus = self.tokenize_and_lemmatize_text(clean_corpus)
@@ -184,7 +185,7 @@ class JurisdictionPreprocessor():
             sentido_fallo = 1
         return sentido_fallo
 
-    def basic_doc_cleaning(self, doc):
+    def basic_text_cleaning(self, text):
         """
         Perform a basic cleaning of the document to remove
         unnecessary characters and standarize some common patterns.
@@ -193,42 +194,42 @@ class JurisdictionPreprocessor():
         """
 
         # num pag out
-        doc_clean = re.sub(r'(\n\d\n)', '', doc)
+        text_clean = re.sub(r'(\n\d\n)', '', text)
 
         # ordered lists out
-        doc_clean = re.sub(r'(\n\d[\d]?\. | \d\.\-)', '', doc_clean)
+        text_clean = re.sub(r'(\n\d[\d]?\. | \d\.\-)', '', text_clean)
 
         # \x0c out
-        doc_clean = re.sub(r'(\x0c)', '', doc_clean)
+        text_clean = re.sub(r'(\x0c)', '', text_clean)
 
         # \n out
-        doc_clean = re.sub('\n', ' ', doc_clean)
+        text_clean = re.sub('\n', ' ', text_clean)
 
         # to lower case
-        doc_clean = doc_clean.lower()
+        text_clean = text_clean.lower()
 
         # primero segundo tercero out
-        doc_clean = re.sub(
+        text_clean = re.sub(
             r'(primero[\s]?(\.\-|\.)|segundo[\s]?(\.\-|\.)|'
-            r'tercero[\s]?(\.\-|\.))', '', doc_clean)
+            r'tercero[\s]?(\.\-|\.))', '', text_clean)
 
         # find all artículos
-        doc_clean = re.sub(
+        text_clean = re.sub(
             r'(artículo[s]?|articulo[s]?|art\.|\bart\b|arts[.])', 'articulo',
-            doc_clean)
+            text_clean)
 
         # Find and Sub órganos judiciales por acrónimos ##
         # Sentencias / Tribunal Supremo
-        doc_clean = re.sub(r'sentencia[s]? de[l]? tribunal supremo', 'stjs',
-                           doc_clean)
-        doc_clean = re.sub(r'tribunal supremo', 'ts', doc_clean)
+        text_clean = re.sub(r'sentencia[s]? de[l]? tribunal supremo', 'stjs',
+                            text_clean)
+        text_clean = re.sub(r'tribunal supremo', 'ts', text_clean)
 
         # Sentencia/Tribunal de Justicia de la Unión Europea
-        doc_clean = re.sub(r'tribunal de justicia de la unión europea', 'tjue',
-                           doc_clean)
+        text_clean = re.sub(r'tribunal de justicia de la unión europea',
+                            'tjue', text_clean)
 
         # Ley de Enjuiciamiento Civil
-        doc_clean = re.sub(r'ley de enjuiciamiento civil', 'lec', doc_clean)
+        text_clean = re.sub(r'ley de enjuiciamiento civil', 'lec', text_clean)
 
         # Código Civil de Cataluña
 
@@ -241,19 +242,19 @@ class JurisdictionPreprocessor():
         ]
 
         for pattern in codigo_cat:
-            doc_clean = re.sub(pattern, 'ccat', doc_clean)
+            text_clean = re.sub(pattern, 'ccat', text_clean)
 
         # código civil
-        doc_clean = re.sub(r'código civil|codigo civil', 'cc', doc_clean)
+        text_clean = re.sub(r'código civil|codigo civil', 'cc', text_clean)
 
         # Ley General para la Defensa de los Consumidores y Usuarios
-        doc_clean = re.sub(
+        text_clean = re.sub(
             r'ley general para la defensa de los consumidores y usuarios',
-            'lgdcu', doc_clean)
+            'lgdcu', text_clean)
 
-        return doc_clean
+        return text_clean
 
-    def tokenize_and_lemmatize_text(self, text, words_list=False):
+    def tokenize_and_lemmatize_text(self, text):
         """Tokenize text, remove stopwords, common punctuation and lemmatize"""
         # Import spanish stopwords
         spanish_stopwords = set(stopwords.words('spanish'))
@@ -264,8 +265,7 @@ class JurisdictionPreprocessor():
         tokens = [i for i in word_tokenize(text.lower()) if i not in stop]
         # Lemmatization
         lemma_words = [word.lemma_ for word in self.nlp(' '.join(tokens))]
+        # Join into a string
+        lemma_text = ' '.join(lemma_words)
 
-        if not words_list:
-            lemma_words = ' '.join(lemma_words)
-
-        return lemma_words
+        return lemma_text
