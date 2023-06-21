@@ -1,0 +1,14 @@
+{
+    "scrapper":
+        {
+        "date": "10/12/2020",
+        "textual_query": "clausulas abusivas",
+        "num_searches": 3,
+        "output_path": "data/data_links"
+        },
+    "db":
+        {
+            "schema_name": "jurisprudence.db",
+            "table_name": "sentence"
+        }
+}
