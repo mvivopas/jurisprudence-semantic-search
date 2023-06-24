@@ -9,11 +9,12 @@ class TFIDFModel():
         self.data = data
         self.processor = JurisdictionPreprocessor()
 
-    def fit(self):
-        # Get vocabulary as a set of words in all provided documents
-        vocabulary = set(flatten(self.data))
+    def fit(self, max_ratio=0.9, min_ratio=0.1, max_dim=800):
         # Create TFIDF matrix and model
-        self.vectorizer = TfidfVectorizer(vocabulary=vocabulary)
+        self.vectorizer = TfidfVectorizer(max_df=max_ratio, 
+                                          min_df=min_ratio, 
+                                          max_features=max_dim)
+        
         self.tfidf_vectors = self.vectorizer.fit_transform(self.data)
 
     def find_most_similar_documents(self, textual_query, top_n=5):
