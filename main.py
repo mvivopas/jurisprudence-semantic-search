@@ -1,6 +1,8 @@
 import json
+import os
 
 import pandas as pd
+import numpy as np
 
 from src.data_preprocessor import JurisdictionPreprocessor
 from src.data_scrapper import JurisdictionScrapper
@@ -38,9 +40,14 @@ def main():
 
     data = df_records["clean_fundamentos"].tolist()
 
-    # generate TF-IDF model
+    # generate TF-IDF model and vectors and save
     tfidf_model = TFIDFModel(data)
     tfidf_model.fit()
+
+    out_path = os.path.join(args["embeddings"]["ouput_path"], 
+                            "tfidf_embeddings.npy")
+    embeddings = np.array(tfidf_model.tfidf_vectors)
+    np.save(out_path, embeddings)
 
 
 if __name__ == '__main__':
