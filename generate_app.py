@@ -1,12 +1,15 @@
 import json
+import pickle
 
-import streamlit as st
 import faiss
-import psycopg2
 import numpy as np
+import psycopg2
+import streamlit as st
 
-EMBEDDING_PATH = "data/embeddings"
+MODEL_PATH = "data/models/vectorizer.pickle"
 VECTOR_DB_SECRETS = "database_secrets.json"
+TOP_K = 5
+
 
 # Connect to the PostgreSQL database
 def connect_to_database():
@@ -16,46 +19,58 @@ def connect_to_database():
 
     conn = psycopg2.connect(
         host="localhost",
+        port=db_args["port"],
         database=db_args["database_name"],
         user=db_args["user"],
-        password=db_args["password"]
+        password=db_args["password"],
     )
     return conn
+
 
 # Load the embeddings from the database
 def load_embeddings_from_database(conn):
     cur = conn.cursor()
-    cur.execute("SELECT vector FROM tfidf_vectors")
-    embeddings = cur.fetchall()
+    cur.execute("SELECT id, vector FROM tfidf_vectors")
+    results = cur.fetchall()
+    ids = np.array([i[0] for i in results])
+    embeddings = np.array([i[1] for i in results])
     cur.close()
-    return np.array(embeddings)
+    return ids, embeddings
+
 
 # Normalize the embeddings
 def normalize_embeddings(embeddings):
     return embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
 
+
 # Build the FAISS index
-def build_faiss_index(embeddings):
+def build_faiss_index(embeddings, ids):
     index = faiss.IndexFlatIP(embeddings.shape[1])  # Cosine similarity index
     index.add(embeddings)
     return index
 
+
 # Perform similarity search
-def perform_similarity_search(index, query_embedding, k):
-    normalized_query = query_embedding / np.linalg.norm(query_embedding)
-    D, I = index.search(normalized_query, k)
-    return I[0]
+def perform_similarity_search(index, model, query_text, k):
+
+    query_embedding = model.transform([query_text]).toarray()
+    similarity_score, idex_list = index.search(query_embedding, k)
+    return idex_list
+
 
 # Streamlit app
-def streamlit_app(conn, index, k):
+def streamlit_app(conn, index, model, k):
     st.title("Similar Document Search")
     st.write("Enter a new document:")
     new_document = st.text_input("")
 
     if st.button("Search"):
         cur = conn.cursor()
-        cur.execute("SELECT document FROM documents WHERE id = ANY(%s)", 
-                    (perform_similarity_search(index, new_document, k),))
+        top_k_ids = perform_similarity_search(index, model, new_document,
+                                              k).tolist()[0]
+        cur.execute(f"""SELECT id, vector
+                FROM tfidf_vectors
+                WHERE id = ANY(ARRAY{top_k_ids})""")
         similar_documents = cur.fetchall()
         cur.close()
 
@@ -63,16 +78,16 @@ def streamlit_app(conn, index, k):
         for document in similar_documents:
             st.write(document[0])
 
-# Main function
-def main():
-    conn = connect_to_database()
-    embeddings = load_embeddings_from_database(conn)
-    normalized_embeddings = normalize_embeddings(embeddings)
-    index = build_faiss_index(normalized_embeddings)
 
-    k = 5  # Number of most similar documents to retrieve
-    streamlit_app(conn, index, k)
+# Main function
+def main(top_k):
+    conn = connect_to_database()
+    ids, embeddings = load_embeddings_from_database(conn)
+    index = build_faiss_index(embeddings, ids)
+
+    vectorizer = pickle.load(open(MODEL_PATH, "rb"))
+    streamlit_app(conn, index, vectorizer, top_k)
 
 
 if __name__ == "__main__":
-    main()
+    main(TOP_K)
