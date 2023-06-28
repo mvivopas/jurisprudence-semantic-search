@@ -1,12 +1,15 @@
 import json
-import pickle
+import os
 
 import faiss
 import numpy as np
 import psycopg2
 import streamlit as st
 
-MODEL_PATH = "data/models/vectorizer.pickle"
+from src.models.tfidf_model import TFIDFModel
+
+CURDIR = os.path.dirname(__file__)
+MODEL_PATH = os.path.join(CURDIR, "data/models/vectorizer.pickle")
 VECTOR_DB_SECRETS = "database_secrets.json"
 TOP_K = 5
 
@@ -52,9 +55,9 @@ def build_faiss_index(embeddings, ids):
 
 # Perform similarity search
 def perform_similarity_search(index, model, query_text, k):
-
-    query_embedding = model.transform([query_text]).toarray()
-    similarity_score, idex_list = index.search(query_embedding, k)
+    query_embedding = model.get_query_embedding(query_text)
+    # generate similarity scores and sorted index list
+    _, idex_list = index.search(query_embedding, k)
     return idex_list
 
 
@@ -85,8 +88,12 @@ def main(top_k):
     ids, embeddings = load_embeddings_from_database(conn)
     index = build_faiss_index(embeddings, ids)
 
-    vectorizer = pickle.load(open(MODEL_PATH, "rb"))
-    streamlit_app(conn, index, vectorizer, top_k)
+    # init model
+    model = TFIDFModel(MODEL_PATH)
+    # load the model
+    model.load()
+
+    streamlit_app(conn, index, model, top_k)
 
 
 if __name__ == "__main__":
