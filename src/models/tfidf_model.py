@@ -1,37 +1,44 @@
+import pickle
+
+import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 
 from ..data_preprocessor import JurisdictionPreprocessor
 
 
 class TFIDFModel():
-    def __init__(self, data):
-        self.data = data
+    def __init__(self, model_path):
         self.processor = JurisdictionPreprocessor()
+        self.model_path = model_path
 
-    def fit(self, max_ratio=0.9, min_ratio=0.1, max_dim=800):
+    def fit_and_save(self,
+                     data,
+                     max_ratio=0.9,
+                     min_ratio=0.1,
+                     max_dim=800,
+                     to_save=True,
+                     out_vecs=None):
         # Create TFIDF matrix and model
-        self.vectorizer = TfidfVectorizer(max_df=max_ratio, 
-                                          min_df=min_ratio, 
+        self.vectorizer = TfidfVectorizer(max_df=max_ratio,
+                                          min_df=min_ratio,
                                           max_features=max_dim)
-        
+
         self.tfidf_vectors = self.vectorizer.fit_transform(self.data)
 
-    def find_most_similar_documents(self, textual_query, top_n=5):
+        if to_save:
+            # save vectorizer
+            with open(self.model_path, 'wb') as handle:
+                pickle.dump(self.vectorizer, handle)
 
-        # preprocess query
-        lemma_text = self.processor.tokenize_and_lemmatize_text(textual_query)
-        # transform query to vector
-        new_document_embedding = self.vectorizer.transform([lemma_text])
-        # calculate cosine similarity
-        similarities = cosine_similarity(new_document_embedding,
-                                         self.tfidf_vectors).flatten()
-        # get top n documents (with highest similarity score)
-        top_indices = similarities.argsort()[-top_n:][::-1]
-        top_documents = [self.data[i] for i in top_indices]
+            if out_vecs:
+                # save vectors
+                embeddings = np.array(self.tfidf_vectors)
+                np.save(out_vecs, embeddings)
 
-        return top_documents, top_indices
+    def load(self):
+        with open(self.model_path, 'rb') as handle:
+            self.vectorizer = pickle.load(handle)
 
-
-def flatten(lst):
-    return [item for sublist in lst for item in sublist]
+    def get_query_embedding(self, query_text):
+        query_embedding = self.vectorizer.transform([query_text]).toarray()
+        return query_embedding
