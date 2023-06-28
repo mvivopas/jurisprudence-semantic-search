@@ -19,7 +19,7 @@ class JurisdictionPreprocessor():
     def __init__(self):
         # define nlp object as lemmatizer
         self.nlp = spacy.load('es_core_news_sm')
-        self.nlp.replace_pipe("lemmatizer", "spanish_lemmatizer")
+        self.nlp.replace_pipe("lemmatizer", "es.lemmatizer")
 
     def __call__(self, url_doc):
 
