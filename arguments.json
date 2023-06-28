@@ -13,6 +13,7 @@
         },
     "embeddings":
     {
-        "output_path": "data/embeddings"
+        "output_vectors": "data/embeddings",
+        "output_model": "data/models"
     }
 }
