@@ -27,15 +27,15 @@ class TFIDFModel():
 
         if to_save:
             # save vectorizer
-            model_out = os.path.join(self.paths["model_path"], 
+            model_out = os.path.join(self.paths["model_path"],
                                      params["model_file_name"])
-            
+
             with open(model_out, 'wb') as handle:
                 pickle.dump(self.vectorizer, handle)
 
             # save vectors
-            vec_out = os.path.join(self.paths["embedding_path"], 
-                                     params["vectors_file_name"])
+            vec_out = os.path.join(self.paths["embedding_path"],
+                                   params["vectors_file_name"])
             embeddings = np.array(self.tfidf_vectors)
             np.save(vec_out, embeddings)
 
