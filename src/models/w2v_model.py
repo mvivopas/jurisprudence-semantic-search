@@ -8,9 +8,8 @@ from ..data_preprocessor import JurisdictionPreprocessor
 from .utils import CONFIG_PATH, read_config
 
 class Word2VecModel():
-    def __init__(self, model_path):
+    def __init__(self):
         self.processor = JurisdictionPreprocessor()
-        self.model_path = model_path
         self.paths = read_config(CONFIG_PATH)["general"]
 
     def fit_and_save(self,
