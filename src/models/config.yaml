@@ -1,0 +1,20 @@
+general:
+  model_path: "data/models"
+  embedding_path: "data/embeddings"
+tfidf:
+  max_ratio: 0.9
+  min_ratio: 0.1
+  max_dim: 800
+  model_file_name: "tfidf_model.pkl"
+  vectors_file_name: "tfidf_embeddings.npy"
+word2vec:
+  size: 300
+  window: 5
+  min_count: 1
+  workers: 4
+  sg: 1
+  hs: 0
+  negative: 5
+  epochs: 10
+  model_file_name: "w2v_model.model"
+  vectors_file_name: "w2v_embeddings.wv"
