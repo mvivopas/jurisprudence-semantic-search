@@ -10,10 +10,5 @@
         {
             "schema_name": "jurisprudence.db",
             "table_name": "sentence"
-        },
-    "embeddings":
-    {
-        "output_vectors": "data/embeddings",
-        "output_model": "data/models"
-    }
+        }
 }
