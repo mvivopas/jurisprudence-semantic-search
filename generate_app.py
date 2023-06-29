@@ -57,7 +57,7 @@ def build_faiss_index(embeddings, ids):
 def perform_similarity_search(index, model, query_text, k):
     query_embedding = model.get_query_embedding(query_text)
     # generate similarity scores and sorted index list
-    _, idex_list = index.search(query_embedding, k)
+    sim_scores, idex_list = index.search(query_embedding, k)
     return idex_list
 
 
