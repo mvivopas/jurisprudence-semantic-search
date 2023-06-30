@@ -6,7 +6,7 @@ import numpy as np
 import psycopg2
 import streamlit as st
 
-from src.models.tfidf_model import TFIDFModel
+from ..models.tfidf_model import TFIDFModel
 
 CURDIR = os.path.dirname(__file__)
 MODEL_PATH = os.path.join(CURDIR, "data/models/vectorizer.pickle")

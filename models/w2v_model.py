@@ -2,7 +2,8 @@ import os
 
 from gensim.models import Word2Vec
 
-from ..data_preprocessor import JurisdictionPreprocessor
+from ..scripts.data_processing.data_preprocessor import \
+    JurisdictionPreprocessor
 from .utils import CONFIG_PATH, read_config
 
 

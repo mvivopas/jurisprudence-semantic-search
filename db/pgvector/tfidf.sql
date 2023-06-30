@@ -1,5 +1,5 @@
 
-CREATE TABLE IF NOT EXISTS tfidf_vectors (
+CREATE TABLE IF NOT EXISTS tfidf (
     id SERIAL PRIMARY KEY,
     vector FLOAT[800]
 );

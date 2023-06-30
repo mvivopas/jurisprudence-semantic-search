@@ -9,6 +9,6 @@
     "db":
         {
             "schema_name": "jurisprudence.db",
-            "table_name": "sentence"
+            "sqlite_table_path": "db/sqlite/sentence.sql"
         }
 }

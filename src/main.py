@@ -3,10 +3,11 @@ import os
 
 import pandas as pd
 
-from src.data_preprocessor import JurisdictionPreprocessor
-from src.data_scrapper import JurisdictionScrapper
-from src.data_storage import JurisdictionDataBaseManager
-from src.models.tfidf_model import TFIDFModel
+from ..models.tfidf_model import TFIDFModel
+from ..scripts.data_processing.data_preprocessor import \
+    JurisdictionPreprocessor
+from ..scripts.data_processing.data_scrapper import JurisdictionScrapper
+from ..scripts.data_processing.data_storage import JurisdictionDataBaseManager
 
 ARGS_PATH = "arguments.json"
 
@@ -31,9 +32,9 @@ def main():
     db_manager = JurisdictionDataBaseManager(args["db"]["schema_name"])
 
     # connect to DB
-    conn, cur = db_manager.generate_connection()
-    # create table
-    db_manager.create_db(table_name, cur)
+    conn, cur = db_manager.generate_sqlite_connection()
+    # create table for processed data
+    db_manager.create_sqlite_table(cur, args["db"]["sqlite_table_path"])
     # insert data
     df_records.to_sql(table_name, conn)
 
