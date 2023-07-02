@@ -9,6 +9,8 @@
     "db":
         {
             "schema_name": "jurisprudence.db",
-            "sqlite_table_path": "db/sqlite/sentence.sql"
+            "sqlite_table_path": "db/sqlite/sentence.sql",
+            "pgv_tfidf_table_path": "db/pgvector/tfidf.sql",
+            "pgv_w2v_table_path": "db/pgvector/word2vec.sql"
         }
 }
