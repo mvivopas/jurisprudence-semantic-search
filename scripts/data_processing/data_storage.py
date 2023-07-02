@@ -1,7 +1,9 @@
 import json
+import os
 import sqlite3
 
 import psycopg2
+from pandas import DataFrame
 
 VECTOR_DB_SECRETS = "database_secrets.json"
 
@@ -10,35 +12,41 @@ class JurisdictionDataBaseManager():
     def __init__(self):
         pass
 
-    def generate_sqlite_connection(self):
+    def __call__(self, conn_type, table_path, embeddings):
+        # connect to DB
+        conn, cur = self.generate_connection(conn_type)
+
+        # create table for processed data
+        self.create_table(cur, table_path)
+
+        table_name = os.path.basename(table_path).replace('.sql', '')
+        if type(embeddings) is DataFrame:
+            embeddings.to_sql(table_name, conn)
+        else:
+            self.insert_embeddings_into_pgvector_table(conn, cur, embeddings)
+
+    def generate_connection(self, conn_type):
         # load db secrets
         with open(VECTOR_DB_SECRETS) as f:
             db_args = json.load(f)
 
-        connection = sqlite3.connect(db_args["database_name"])
-        cursor = connection.cursor()
+        if conn_type == "pgvector":
+            connection = psycopg2.connect(
+                host="localhost",
+                port=db_args["port"],
+                database=db_args["database_name"],
+                user=db_args["user"],
+                password=db_args["password"],
+            )
+            cursor = connection.cursor()
+
+        elif conn_type == "sqlite":
+            connection = sqlite3.connect(db_args["database_name"])
+            cursor = connection.cursor()
+
         return connection, cursor
 
-    def create_sqlite_table(self, cursor, table_path):
-        with open(table_path, 'rb') as handle:
-            cursor.execute(handle)
-
-    def generate_pgvector_connection(self):
-        # load db secrets
-        with open(VECTOR_DB_SECRETS) as f:
-            db_args = json.load(f)
-
-        connection = psycopg2.connect(
-            host="localhost",
-            port=db_args["port"],
-            database=db_args["database_name"],
-            user=db_args["user"],
-            password=db_args["password"],
-        )
-        cursor = connection.cursor()
-        return connection, cursor
-
-    def create_pgvector_table(self, cursor, table_path):
+    def create_table(self, cursor, table_path):
         with open(table_path, 'rb') as handle:
             cursor.execute(handle)
 
