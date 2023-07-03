@@ -3,9 +3,9 @@ import os
 import numpy as np
 from gensim.models import Word2Vec
 
-from ..scripts.data_processing.data_preprocessor import \
-    JurisdictionPreprocessor
-from ..scripts.data_processing.data_storage import JurisdictionDataBaseManager
+from scripts.data_processing.data_preprocessor import JurisdictionPreprocessor
+from scripts.data_processing.data_storage import JurisdictionDataBaseManager
+
 from .utils import CONFIG_PATH, read_config
 
 
@@ -37,9 +37,10 @@ class Word2VecModel():
             word_vectors = self.model.wv
             word_vectors.save(vec_out)
 
-            # save vectors into pgvector data base
-            db_manager = JurisdictionDataBaseManager()
-            db_manager("pgvector", table_path, word_vectors)
+            if table_path:
+                # save vectors into pgvector data base
+                db_manager = JurisdictionDataBaseManager()
+                db_manager("pgvector", table_path, word_vectors)
 
     def load(self):
         self.model = Word2Vec.load(self.model_path)

@@ -4,9 +4,9 @@ import pickle
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from ..scripts.data_processing.data_preprocessor import \
-    JurisdictionPreprocessor
-from ..scripts.data_processing.data_storage import JurisdictionDataBaseManager
+from scripts.data_processing.data_preprocessor import JurisdictionPreprocessor
+from scripts.data_processing.data_storage import JurisdictionDataBaseManager
+
 from .utils import CONFIG_PATH, read_config
 
 
@@ -39,9 +39,10 @@ class TFIDFModel():
             embeddings = np.array(self.tfidf_vectors)
             np.save(vec_out, embeddings)
 
-            # save vectors into pgvector data base
-            db_manager = JurisdictionDataBaseManager()
-            db_manager("pgvector", table_path, embeddings)
+            if table_path:
+                # save vectors into pgvector data base
+                db_manager = JurisdictionDataBaseManager()
+                db_manager("pgvector", table_path, embeddings)
 
     def load(self):
         with open(self.model_path, 'rb') as handle:
