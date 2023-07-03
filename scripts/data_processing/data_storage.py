@@ -12,7 +12,7 @@ class JurisdictionDataBaseManager():
     def __init__(self):
         pass
 
-    def __call__(self, conn_type, table_path, embeddings):
+    def __call__(self, conn_type, table_path, data):
         # connect to DB
         conn, cur = self.generate_connection(conn_type)
 
@@ -20,10 +20,18 @@ class JurisdictionDataBaseManager():
         self.create_table(cur, table_path)
 
         table_name = os.path.basename(table_path).replace('.sql', '')
-        if type(embeddings) is DataFrame:
-            embeddings.to_sql(table_name, conn)
-        else:
-            self.insert_embeddings_into_pgvector_table(conn, cur, embeddings)
+        try:
+            if type(data) is DataFrame:
+                data.to_sql(table_name, conn, if_exists='replace', index=False)
+            else:
+                self.insert_embeddings_into_pgvector_table(conn, cur, data)
+
+            conn.commit()
+            self.exit_db(conn, cur)
+
+        except Exception as error:
+            self.exit_db(conn, cur)
+            raise error
 
     def generate_connection(self, conn_type):
         # load db secrets
@@ -47,16 +55,14 @@ class JurisdictionDataBaseManager():
         return connection, cursor
 
     def create_table(self, cursor, table_path):
-        with open(table_path, 'rb') as handle:
-            cursor.execute(handle)
+        with open(table_path, 'r') as handle:
+            cursor.execute(handle.read())
 
     def insert_embeddings_into_pgvector_table(self, conn, cursor, vector_list):
         # SQL statement to insert vectors into the table
         sql = "INSERT INTO tfidf_vectors (vector) VALUES (%s)"
         # Execute the SQL statement with multiple sets of parameters
         cursor.executemany(sql, vector_list)
-        # Commit the changes to the database
-        conn.commit()
 
     def exit_db(self, conn, cursor):
         cursor.close()
