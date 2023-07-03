@@ -1,13 +1,12 @@
 import json
-import os
 
 import pandas as pd
 
-from ..models.tfidf_model import TFIDFModel
-from ..scripts.data_processing.data_preprocessor import \
-    JurisdictionPreprocessor
-from ..scripts.data_processing.data_scrapper import JurisdictionScrapper
-from ..scripts.data_processing.data_storage import JurisdictionDataBaseManager
+from models.tfidf_model import TFIDFModel
+from models.w2v_model import Word2VecModel
+from scripts.data_processing.data_preprocessor import JurisdictionPreprocessor
+from scripts.data_processing.data_scrapper import JurisdictionScrapper
+from scripts.data_processing.data_storage import JurisdictionDataBaseManager
 
 ARGS_PATH = "arguments.json"
 
@@ -28,26 +27,24 @@ def main():
     df_records = pd.DataFrame(list_of_dict_info)
 
     # store data in DB
-    table_name = args["db"]["table_name"]
-    db_manager = JurisdictionDataBaseManager(args["db"]["schema_name"])
+    sqlite_table_path = args["db"]["sqlite_table_path"]
+    db_manager = JurisdictionDataBaseManager()
 
-    # connect to DB
-    conn, cur = db_manager.generate_sqlite_connection()
-    # create table for processed data
-    db_manager.create_sqlite_table(cur, args["db"]["sqlite_table_path"])
-    # insert data
-    df_records.to_sql(table_name, conn)
+    # create table and insert data
+    db_manager("sqlite", sqlite_table_path, df_records)
 
+    # we are using fundamentos for the similarity search
     data = df_records["clean_fundamentos"].tolist()
-
+    pg_tables_path = args["db"]
     # generate TF-IDF model and vectors and save
-    out_model = os.path.join(args["embeddings"]["output_model"],
-                             "tfidf_model.pickle")
-    out_vecs = os.path.join(args["embeddings"]["output_vectors"],
-                            "tfidf_embeddings.npy")
+    tfidf_model = TFIDFModel()
+    tfidf_model.fit_and_save(data,
+                             table_path=pg_tables_path["pgv_tfidf_table_path"])
 
-    tfidf_model = TFIDFModel(out_model)
-    tfidf_model.fit_and_save(data, out_vecs=out_vecs)
+    # generate Word2Vec model and vectors and save
+    w2v_model = Word2VecModel()
+    w2v_model.fit_and_save(data,
+                           table_path=pg_tables_path["pgv_w2v_table_path"])
 
 
 if __name__ == '__main__':
