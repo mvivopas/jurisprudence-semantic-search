@@ -2,6 +2,7 @@ import os
 import pickle
 
 import numpy as np
+from scipy.sparse import csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from scripts.data_processing.data_preprocessor import JurisdictionPreprocessor
@@ -40,9 +41,13 @@ class TFIDFModel():
             np.save(vec_out, embeddings)
 
             if table_path:
+                sparse_vectors = csr_matrix(data.all())
+                dense_vectors = sparse_vectors.toarray()
+                # format adequately to insert into db
+                dense_vector_list = [[vec.tolist()] for vec in dense_vectors]
                 # save vectors into pgvector data base
                 db_manager = JurisdictionDataBaseManager()
-                db_manager("pgvector", table_path, embeddings)
+                db_manager("pgvector", table_path, dense_vector_list)
 
     def load(self):
         with open(self.model_path, 'rb') as handle:
