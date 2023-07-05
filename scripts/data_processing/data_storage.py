@@ -24,7 +24,8 @@ class JurisdictionDataBaseManager():
             if type(data) is DataFrame:
                 data.to_sql(table_name, conn, if_exists='replace', index=False)
             else:
-                self.insert_embeddings_into_pgvector_table(conn, cur, data)
+                self.insert_embeddings_into_pgvector_table(
+                    cur, table_name, data)
 
             conn.commit()
             self.exit_db(conn, cur)
@@ -58,9 +59,10 @@ class JurisdictionDataBaseManager():
         with open(table_path, 'r') as handle:
             cursor.execute(handle.read())
 
-    def insert_embeddings_into_pgvector_table(self, conn, cursor, vector_list):
+    def insert_embeddings_into_pgvector_table(self, cursor, table_name,
+                                              vector_list):
         # SQL statement to insert vectors into the table
-        sql = "INSERT INTO tfidf_vectors (vector) VALUES (%s)"
+        sql = f"INSERT INTO {table_name} (vector) VALUES (%s)"
         # Execute the SQL statement with multiple sets of parameters
         cursor.executemany(sql, vector_list)
 
