@@ -1,6 +1,6 @@
 import yaml
 
-CONFIG_PATH = "config.yaml"
+CONFIG_PATH = "models/config.yaml"
 
 
 def read_config(path):
