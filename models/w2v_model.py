@@ -22,7 +22,7 @@ class Word2VecModel():
     def fit_and_save(self, data, to_save=True, table_path=None):
 
         self.model = Word2Vec(data,
-                              size=self.params["size"],
+                              vector_size=self.params["size"],
                               window=self.params["window"],
                               min_count=self.params["min_count"],
                               workers=self.params["workers"])
