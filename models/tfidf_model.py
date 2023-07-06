@@ -41,7 +41,7 @@ class TFIDFModel():
             np.save(vec_out, embeddings)
 
             if table_path:
-                sparse_vectors = csr_matrix(data.all())
+                sparse_vectors = csr_matrix(embeddings.all())
                 dense_vectors = sparse_vectors.toarray()
                 # format adequately to insert into db
                 dense_vector_list = [[vec.tolist()] for vec in dense_vectors]
@@ -53,6 +53,6 @@ class TFIDFModel():
         with open(self.model_path, 'rb') as handle:
             self.vectorizer = pickle.load(handle)
 
-    def get_query_embedding(self, query_text):
+    def get_doc_vector(self, query_text):
         query_embedding = self.vectorizer.transform([query_text]).toarray()
         return query_embedding
