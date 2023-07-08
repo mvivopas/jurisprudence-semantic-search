@@ -5,8 +5,8 @@ import numpy as np
 import streamlit as st
 from data_processing.data_storage import JurisdictionDataBaseManager
 
-from ..models.tfidf_model import TFIDFModel
-from ..models.w2v_model import Word2VecModel
+from models.tfidf_model import TFIDFModel
+from models.w2v_model import Word2VecModel
 
 CURDIR = os.path.dirname(__file__)
 MODEL_PATH = os.path.join(CURDIR, "data/models/vectorizer.pickle")
@@ -33,29 +33,33 @@ def build_faiss_index(embeddings, ids):
 def perform_similarity_search(index, model, query_text, k):
     query_embedding = model.get_doc_vector(query_text)
     # generate similarity scores and sorted index list
-    sim_scores, idex_list = index.search(query_embedding, k)
-    return idex_list
+    _, index_list = index.search(query_embedding, k)
+    return index_list
 
 
 # Streamlit app
 def streamlit_app(db_manager, k):
+
     st.title("Similar Document Search")
-    st.write("Enter a new document:")
-    new_document = st.text_input("")
 
-    category = st.selectbox("Select a category", list(DICT_CATEGORY_MODEL))
+    st.write("Select a category")
+    category = st.selectbox("categories", list(DICT_CATEGORY_MODEL))
 
-    model = DICT_CATEGORY_MODEL.get(category)
-    model.load()
+    new_document = st.text_input("Enter a new document:")
 
-    ids, embeddings = db_manager.load_embeddings_from_pgvector_table(category)
-    index = build_faiss_index(embeddings, ids)
+    # and st.button("Search")
+    if category and new_document:
+        model = DICT_CATEGORY_MODEL.get(category)
+        model.load()
 
-    if st.button("Search") and category:
+        ids, embeddings = db_manager.load_embeddings_from_pgvector_table(
+            category.lower())
+        index = build_faiss_index(embeddings, ids)
+
         top_k_ids = perform_similarity_search(index, model, new_document,
                                               k).tolist()[0]
 
-        id, similar_documents = db_manager.load_embeddings_from_pgvector_table(
+        _, similar_documents = db_manager.load_embeddings_from_pgvector_table(
             category, top_k_ids)
 
         st.write("Similar documents:")
