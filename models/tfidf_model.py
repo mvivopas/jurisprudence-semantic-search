@@ -53,6 +53,6 @@ class TFIDFModel():
         with open(self.model_path, 'rb') as handle:
             self.vectorizer = pickle.load(handle)
 
-    def get_doc_vector(self, query_text):
+    def get_query_vector(self, query_text):
         query_embedding = self.vectorizer.transform([query_text]).toarray()
         return query_embedding

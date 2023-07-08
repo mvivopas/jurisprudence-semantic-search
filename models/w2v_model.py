@@ -71,4 +71,9 @@ class Word2VecModel():
         if word_count > 0:
             aggregate_vector = np.divide(aggregate_vector, word_count)
 
-        return aggregate_vector.reshape(1, len(aggregate_vector))
+        return aggregate_vector
+
+    def get_query_vector(self, document):
+        embed = self.get_doc_vector(document)
+        embed = embed.reshape(1, len(embed))
+        return embed
