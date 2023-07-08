@@ -71,4 +71,4 @@ class Word2VecModel():
         if word_count > 0:
             aggregate_vector = np.divide(aggregate_vector, word_count)
 
-        return aggregate_vector
+        return aggregate_vector.reshape(1, len(aggregate_vector))
