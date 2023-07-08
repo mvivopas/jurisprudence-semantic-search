@@ -1,5 +1,6 @@
+DROP TABLE IF EXISTS tfidf;
 
-CREATE TABLE IF NOT EXISTS tfidf (
+CREATE TABLE tfidf (
     id SERIAL PRIMARY KEY,
     vector FLOAT[800]
 );
