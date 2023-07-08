@@ -30,10 +30,16 @@ def build_faiss_index(embeddings, ids):
 
 
 # Perform similarity search
-def perform_similarity_search(index, model, query_text, k):
-    query_embedding = model.get_doc_vector(query_text)
+def perform_similarity_search(db_manager, category, model, query_text, k):
+
+    ids, embeddings = db_manager.load_embeddings_from_pgvector_table(
+        category.lower())
+    index = build_faiss_index(embeddings, ids)
+
+    query_embedding = model.get_query_vector(query_text)
     # generate similarity scores and sorted index list
     _, index_list = index.search(query_embedding, k)
+    index_list = index_list.tolist()[0]
     return index_list
 
 
@@ -52,12 +58,8 @@ def streamlit_app(db_manager, k):
         model = DICT_CATEGORY_MODEL.get(category)
         model.load()
 
-        ids, embeddings = db_manager.load_embeddings_from_pgvector_table(
-            category.lower())
-        index = build_faiss_index(embeddings, ids)
-
-        top_k_ids = perform_similarity_search(index, model, new_document,
-                                              k).tolist()[0]
+        top_k_ids = perform_similarity_search(db_manager, category, model,
+                                              new_document, k)
 
         _, similar_documents = db_manager.load_embeddings_from_pgvector_table(
             category, top_k_ids)
