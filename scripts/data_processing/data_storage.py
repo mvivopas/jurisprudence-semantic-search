@@ -83,4 +83,4 @@ class JurisdictionDataBaseManager():
 
     def exit_db(self):
         self.cursor.close()
-        self.conn.close()
+        self.connection.close()
