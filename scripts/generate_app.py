@@ -11,40 +11,46 @@ from models.w2v_model import Word2VecModel
 CURDIR = os.path.dirname(__file__)
 MODEL_PATH = os.path.join(CURDIR, "data/models/vectorizer.pickle")
 TOP_K = 5
-METHOD = "tfidf"
 
 DICT_CATEGORY_MODEL = {"TfIdf": TFIDFModel(), "WordVector": Word2VecModel()}
 
 
-# Normalize the embeddings
 def normalize_embeddings(embeddings):
+    """Normalize the embeddings"""
     return embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
 
 
-# Build the FAISS index
 def build_faiss_index(embeddings, ids):
+    """Build the FAISS index"""
     # Cosine similarity index
     index = faiss.IndexFlatIP(embeddings.shape[1])
     index.add(embeddings)
     return index
 
 
-# Perform similarity search
-def perform_similarity_search(db_manager, category, model, query_text, k):
+def perform_similarity_search(category, model, query_text, k):
+    """Perform similarity search"""
+    db_pgvec = JurisdictionDataBaseManager()
+    db_pgvec.generate_connection("pgvector")
 
-    ids, embeddings = db_manager.load_embeddings_from_pgvector_table(
-        category.lower())
+    result = db_pgvec.load_data_from_table(category.lower(), "id, vector")
+    ids = np.array([i[0] for i in result])
+    embeddings = np.array([i[1] for i in result])
+
     index = build_faiss_index(embeddings, ids)
 
     query_embedding = model.get_query_vector(query_text)
+
     # generate similarity scores and sorted index list
     _, index_list = index.search(query_embedding, k)
     index_list = index_list.tolist()[0]
     return index_list
 
 
-# Streamlit app
-def streamlit_app(db_manager, k):
+def streamlit_app(k):
+    """Streamlit app"""
+    db_sqlite = JurisdictionDataBaseManager()
+    db_sqlite.generate_connection("sqlite")
 
     st.title("Similar Document Search")
 
@@ -53,29 +59,30 @@ def streamlit_app(db_manager, k):
 
     new_document = st.text_input("Enter a new document:")
 
-    # and st.button("Search")
+    # and st.button("Search") --for debug mode deactivate
     if category and new_document:
         model = DICT_CATEGORY_MODEL.get(category)
         model.load()
 
-        top_k_ids = perform_similarity_search(db_manager, category, model,
-                                              new_document, k)
+        top_k_ids = perform_similarity_search(category, model, new_document, k)
 
-        _, similar_documents = db_manager.load_embeddings_from_pgvector_table(
-            category, top_k_ids)
+        result = db_sqlite.load_data_from_table("sentence",
+                                                "id, clean_fundamentos",
+                                                top_k_ids)
+
+        ids = np.array([i[0] for i in result])
+        corpus = np.array([i[1] for i in result])
 
         st.write("Similar documents:")
-        for document in similar_documents:
-            st.write(document[0])
+        for id_, document in zip(ids, corpus):
+            st.write(id_)
+            st.write(document)
 
 
 # Main function
-def main(top_k, method):
-    db_manager = JurisdictionDataBaseManager()
-    db_manager.generate_connection("pgvector")
-
-    streamlit_app(db_manager, top_k)
+def main(top_k):
+    streamlit_app(top_k)
 
 
 if __name__ == "__main__":
-    main(TOP_K, METHOD)
+    main(TOP_K)
