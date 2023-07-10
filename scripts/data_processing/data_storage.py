@@ -3,7 +3,6 @@ import os
 import sqlite3
 
 import psycopg2
-from numpy import array
 from pandas import DataFrame
 
 VECTOR_DB_SECRETS = "database_secrets.json"
@@ -66,20 +65,18 @@ class JurisdictionDataBaseManager():
         # Execute the SQL statement with multiple sets of parameters
         self.cursor.executemany(sql, vector_list)
 
-    def load_embeddings_from_pgvector_table(self,
-                                            table_name,
-                                            condition_ids=None):
+    def load_data_from_table(self, table_name, columns, condition_ids=None):
         if condition_ids:
-            condition_query = f"WHERE id = ANY(ARRAY{condition_ids})"
+            str_ids = ','.join(map(str, condition_ids))
+            condition_query = f"WHERE id = ANY(ARRAY{str_ids})"
         else:
             condition_query = ""
 
-        self.cursor.execute(
-            f"SELECT id, vector FROM {table_name} {condition_query}")
+        query = f"SELECT {columns} FROM {table_name} {condition_query}"
+
+        self.cursor.execute(query)
         results = self.cursor.fetchall()
-        ids = array([i[0] for i in results])
-        embeddings = array([i[1] for i in results])
-        return ids, embeddings
+        return results
 
     def exit_db(self):
         self.cursor.close()
