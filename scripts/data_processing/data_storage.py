@@ -68,7 +68,7 @@ class JurisdictionDataBaseManager():
     def load_data_from_table(self, table_name, columns, condition_ids=None):
         if condition_ids:
             str_ids = ','.join(map(str, condition_ids))
-            condition_query = f"WHERE id = ANY(ARRAY{str_ids})"
+            condition_query = f"WHERE id IN ({str_ids})"
         else:
             condition_query = ""
 
