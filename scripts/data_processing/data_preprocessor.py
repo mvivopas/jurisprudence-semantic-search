@@ -129,8 +129,8 @@ class JurisdictionPreprocessor():
         # Antecedentes de hecho part of document
         pattern_antecedentes = [
             re.compile(r'ANTECEDENTES DE HECHO'),
-            re.compile(
-                r'FUNDAMENTOS|F U N D A M E N T O S|RAZONAMIENTOS JURÍDICOS')
+            re.compile(r'FUNDAMENTOS|F U N D A M E N T O S|'
+                       r'RAZONAMIENTOS JURÍDICOS')
         ]
 
         doc_loc_antecedentes = [
@@ -179,7 +179,7 @@ class JurisdictionPreprocessor():
         return dict_info
 
     def sentido_fallo(self, fallo):
-        if re.search(r'[Dd][Ee][Ss][Ee][Ss][Tt][Ii][Mm]', fallo):
+        if re.search(r'(?i)(desestim)', fallo):
             sentido_fallo = 0
         else:
             sentido_fallo = 1
