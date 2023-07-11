@@ -34,10 +34,9 @@ def perform_similarity_search(category, model, query_text, k):
     db_pgvec.generate_connection("pgvector")
 
     result = db_pgvec.load_data_from_table(category.lower(), "id, vector")
-    ids = np.array([i[0] for i in result])
-    embeddings = np.array([i[1] for i in result])
 
-    index = build_faiss_index(embeddings, ids)
+    ids, embeddings = zip(*result)
+    index = build_faiss_index(np.array(embeddings), np.array(ids))
 
     query_embedding = model.get_query_vector(query_text)
 
@@ -69,14 +68,14 @@ def streamlit_app(k):
         result = db_sqlite.load_data_from_table("sentence",
                                                 "id, clean_fundamentos",
                                                 top_k_ids)
-
-        ids = np.array([i[0] for i in result])
-        corpus = np.array([i[1] for i in result])
+        ids, corpus = zip(*result)
 
         st.write("Similar documents:")
-        for id_, document in zip(ids, corpus):
-            st.write(id_)
-            st.write(document)
+        for id_, doc in zip(ids, corpus):
+            descr = f"""__CENDOJ ID__: {id_} ---
+                        __INTRO__: {doc[:20]}"""
+            with st.expander(descr):
+                st.write(doc)
 
 
 # Main function
