@@ -10,7 +10,6 @@ from models.w2v_model import Word2VecModel
 
 CURDIR = os.path.dirname(__file__)
 MODEL_PATH = os.path.join(CURDIR, "data/models/vectorizer.pickle")
-TOP_K = 5
 
 DICT_CATEGORY_MODEL = {"TfIdf": TFIDFModel(), "WordVector": Word2VecModel()}
 
@@ -46,7 +45,7 @@ def perform_similarity_search(category, model, query_text, k):
     return index_list
 
 
-def streamlit_app(k):
+def streamlit_app():
     """Streamlit app"""
     db_sqlite = JurisdictionDataBaseManager()
     db_sqlite.generate_connection("sqlite")
@@ -58,30 +57,44 @@ def streamlit_app(k):
 
     new_document = st.text_input("Enter a new document:")
 
-    # and st.button("Search") --for debug mode deactivate
+    number_results = st.text_input("Enter the number of results [1 - 50]:")
+
     if category and new_document:
         model = DICT_CATEGORY_MODEL.get(category)
         model.load()
 
-        top_k_ids = perform_similarity_search(category, model, new_document, k)
+        if number_results:
+            number_results = int(number_results)
+        else:
+            number_results = 5
 
-        result = db_sqlite.load_data_from_table("sentence",
-                                                "id, clean_fundamentos",
-                                                top_k_ids)
-        ids, corpus = zip(*result)
+        top_k_ids = perform_similarity_search(category, model, new_document,
+                                              number_results)
 
-        st.write("Similar documents:")
-        for id_, doc in zip(ids, corpus):
-            descr = f"""__CENDOJ ID__: {id_} ---
-                        __INTRO__: {doc[:20]}"""
-            with st.expander(descr):
-                st.write(doc)
+        # retrieve document information for top results
+        results = db_sqlite.load_data_from_table("sentence", "*", top_k_ids)
+
+        # retrieve column names for retrieved info
+        db_sqlite.cursor.execute("PRAGMA table_info(sentence)")
+        result_descr = db_sqlite.cursor.fetchall()
+        # Extract the column names from the results
+        column_names = [result[1] for result in result_descr]
+
+        st.header("Similar documents:")
+        for result in results:
+            with st.container():
+                st.subheader(f"__CENDOJ ID__: {result[0]}")
+                for col, r in zip(column_names[1:-1], result[1:-1]):
+                    st.write(f"__{col.capitalize()}__: {r}")
+
+                with st.expander("View Document"):
+                    st.write(result[-1])
 
 
 # Main function
-def main(top_k):
-    streamlit_app(top_k)
+def main():
+    streamlit_app()
 
 
 if __name__ == "__main__":
-    main(TOP_K)
+    main()
