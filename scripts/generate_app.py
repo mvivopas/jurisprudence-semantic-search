@@ -59,15 +59,11 @@ def streamlit_app():
 
     number_results = st.text_input("Enter the number of results [1 - 50]:")
 
-    if category and new_document:
+    if category and new_document and number_results:
         model = DICT_CATEGORY_MODEL.get(category)
         model.load()
 
-        if number_results:
-            number_results = int(number_results)
-        else:
-            number_results = 5
-
+        number_results = int(number_results)
         top_k_ids = perform_similarity_search(category, model, new_document,
                                               number_results)
 
@@ -84,11 +80,11 @@ def streamlit_app():
         for result in results:
             with st.container():
                 st.subheader(f"__CENDOJ ID__: {result[0]}")
-                for col, r in zip(column_names[1:-1], result[1:-1]):
+                for col, r in zip(column_names[2:], result[2:]):
                     st.write(f"__{col.capitalize()}__: {r}")
 
                 with st.expander("View Document"):
-                    st.write(result[-1])
+                    st.write(result[1])
 
 
 # Main function
