@@ -71,10 +71,9 @@ def streamlit_app():
         results = db_sqlite.load_data_from_table("sentence", "*", top_k_ids)
 
         # retrieve column names for retrieved info
-        db_sqlite.cursor.execute("PRAGMA table_info(sentence)")
-        result_descr = db_sqlite.cursor.fetchall()
+        info_table = db_sqlite.get_query_data("PRAGMA table_info(sentence)")
         # Extract the column names from the results
-        column_names = [result[1] for result in result_descr]
+        column_names = [result[1] for result in info_table]
 
         st.header("Similar documents:")
         for result in results:

@@ -73,9 +73,14 @@ class JurisdictionDataBaseManager():
             condition_query = ""
 
         query = f"SELECT {columns} FROM {table_name} {condition_query}"
+        results = self.get_query_data(self, query)
 
+        return results
+
+    def get_query_data(self, query):
         self.cursor.execute(query)
         results = self.cursor.fetchall()
+        self.cursor.close()
         return results
 
     def exit_db(self):
