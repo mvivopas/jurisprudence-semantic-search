@@ -49,21 +49,25 @@ class JurisdictionDataBaseManager():
                 user=db_args["user"],
                 password=db_args["password"],
             )
-            self.cursor = self.connection.cursor()
 
         elif conn_type == "sqlite":
             self.connection = sqlite3.connect(db_args["database_name"])
-            self.cursor = self.connection.cursor()
 
     def create_table(self, table_path):
+        cursor = self.connection.cursor()
+
         with open(table_path, 'r') as handle:
-            self.cursor.execute(handle.read())
+            cursor.execute(handle.read())
+
+        cursor.close()
 
     def insert_embeddings_into_pgvector_table(self, table_name, vector_list):
+        cursor = self.connection.cursor()
         # SQL statement to insert vectors into the table
         sql = f"INSERT INTO {table_name} (vector) VALUES (%s)"
         # Execute the SQL statement with multiple sets of parameters
-        self.cursor.executemany(sql, vector_list)
+        cursor.executemany(sql, vector_list)
+        cursor.close()
 
     def load_data_from_table(self, table_name, columns, condition_ids=None):
         if condition_ids:
@@ -73,16 +77,16 @@ class JurisdictionDataBaseManager():
             condition_query = ""
 
         query = f"SELECT {columns} FROM {table_name} {condition_query}"
-        results = self.get_query_data(self, query)
+        results = self.get_query_data(query)
 
         return results
 
     def get_query_data(self, query):
-        self.cursor.execute(query)
-        results = self.cursor.fetchall()
-        self.cursor.close()
+        cursor = self.connection.cursor()
+        cursor.execute(query)
+        results = cursor.fetchall()
+        cursor.close()
         return results
 
     def exit_db(self):
-        self.cursor.close()
         self.connection.close()
