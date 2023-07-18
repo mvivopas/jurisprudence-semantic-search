@@ -1,6 +1,7 @@
 import os
 import tempfile
 
+import docx2txt
 import faiss
 import numpy as np
 import PyPDF2
@@ -24,6 +25,11 @@ def extract_text_from_pdf(file_path):
         for page in range(num_pages):
             text += reader.pages[page].extract_text()
         return text
+
+
+def extract_text_from_docx(file_path):
+    text = docx2txt.process(file_path)
+    return text
 
 
 def normalize_embeddings(embeddings):
@@ -85,7 +91,16 @@ def streamlit_app():
             with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
                 tmp_file.write(uploaded_file.read())
                 tmp_file.seek(0)
-                new_document = extract_text_from_pdf(tmp_file.name)
+                file_extension = uploaded_file.name.split(".")[-1]
+
+                if file_extension == "pdf":
+                    new_document = extract_text_from_pdf(tmp_file.name)
+                elif file_extension == "docx":
+                    new_document = extract_text_from_docx(tmp_file.name)
+                else:
+                    st.error("Invalid file format. "
+                             "Only PDF and DOCX files are supported.")
+                    return
 
         top_k_ids = perform_similarity_search(category, model, new_document,
                                               number_results)
