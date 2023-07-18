@@ -1,7 +1,9 @@
 import os
+import tempfile
 
 import faiss
 import numpy as np
+import PyPDF2
 import streamlit as st
 from data_processing.data_storage import JurisdictionDataBaseManager
 
@@ -12,6 +14,16 @@ CURDIR = os.path.dirname(__file__)
 MODEL_PATH = os.path.join(CURDIR, "data/models/vectorizer.pickle")
 
 DICT_CATEGORY_MODEL = {"TfIdf": TFIDFModel(), "WordVector": Word2VecModel()}
+
+
+def extract_text_from_pdf(file_path):
+    with open(file_path, "rb") as file:
+        reader = PyPDF2.PdfReader(file)
+        num_pages = len(reader.pages)
+        text = ""
+        for page in range(num_pages):
+            text += reader.pages[page].extract_text()
+        return text
 
 
 def normalize_embeddings(embeddings):
@@ -57,13 +69,24 @@ def streamlit_app():
 
     new_document = st.text_input("Enter a new document:")
 
+    uploaded_file = st.file_uploader("Upload a PDF or Word document",
+                                     type=["pdf", "docx"])
+
     number_results = st.text_input("Enter the number of results [1 - 50]:")
 
-    if category and new_document and number_results:
+    if category and number_results and (new_document or uploaded_file):
         model = DICT_CATEGORY_MODEL.get(category)
         model.load()
 
         number_results = int(number_results)
+
+        # Retrieve text from uploaded file
+        if uploaded_file:
+            with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                tmp_file.write(uploaded_file.read())
+                tmp_file.seek(0)
+                new_document = extract_text_from_pdf(tmp_file.name)
+
         top_k_ids = perform_similarity_search(category, model, new_document,
                                               number_results)
 
