@@ -5,15 +5,19 @@ from urllib.request import urlopen
 
 import numpy as np
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
+option = webdriver.ChromeOptions()
+option.add_argument("start-maximized")
+
 # num requests will always be 4 as it is the maximum number of pages
 # in one search
-NUM_REQUESTS = 4
+NUM_REQUESTS = 19
 ROOT_URL = "https://www.poderjudicial.es"
 
 
@@ -67,7 +71,9 @@ class JurisdictionScrapper():
         all required conditions (date, location, organ, etc) run que query
         and extract the links from the results
         """
-        driver = webdriver.Chrome(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=Service(
+            ChromeDriverManager().install()),
+                                  options=option)
         wait = WebDriverWait(driver, 30)
 
         jurisprudence_searcher_url = os.path.join(root, "search",
@@ -130,25 +136,14 @@ class JurisdictionScrapper():
             EC.element_to_be_clickable(
                 (By.XPATH, "(//button[@id='COMUNIDADmultiselec'])"))).click()
 
-        # Expand number of results per page
-        wait.until(
-            EC.element_to_be_clickable((
-                By.XPATH,
-                "(//button[@data-id='frmBusquedajurisprudencia_recordsPerPage'])"  # noqa: E501
-            ))).click()
-        # Click on 50
-        wait.until(
-            EC.element_to_be_clickable(
-                (By.XPATH, "(//span[contains(text(),50)])"))).click()
-
         # Set date
         if fecha_state:
-            fecha = driver.find_element_by_id(
-                "frmBusquedajurisprudencia_FECHARESOLUCIONHASTA")
+            fecha = driver.find_element(
+                By.ID, "frmBusquedajurisprudencia_FECHARESOLUCIONHASTA")
             fecha.send_keys(date)
 
         # Set query and search
-        search = driver.find_element_by_id("frmBusquedajurisprudencia_TEXT")
+        search = driver.find_element(By.ID, "frmBusquedajurisprudencia_TEXT")
         search.send_keys(name)
         search.send_keys(Keys.RETURN)
 
@@ -162,13 +157,14 @@ class JurisdictionScrapper():
                     (By.ID, "jurisprudenciaresults_searchresults")))
 
             # identify links
-            links = text.find_elements_by_class_name('title')
+            links = text.find_elements(By.CLASS_NAME, 'title')
 
             for link in links:
-                n = link.get_attribute('innerHTML')
-                m = self.get_src(
-                    urlopen(self.get_href(n)).read().decode("latin-1"))
-                link_list.append(root + m)
+                link_attrs = link.get_attribute('innerHTML')
+                link_href = self.get_href(link_attrs)
+                final_url = self.get_src(
+                    urlopen(link_href).read().decode("latin-1"))
+                link_list.append(root + final_url)
 
             # click on next page button
             main = WebDriverWait(driver, 10).until(
@@ -178,7 +174,7 @@ class JurisdictionScrapper():
             if i == int(num_requests) - 1:
                 last_date = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located(
-                        (By.XPATH, "(//li[contains(text(),'Fecha')])[50]"
+                        (By.XPATH, "(//li[contains(text(),'Fecha')])[10]"
                          ))).get_attribute('innerHTML')
                 last_date = last_date[10:-5]
 
