@@ -1,24 +1,38 @@
 # Web Scraping from dynamic platform: CENDOJ
 
 import os
-from urllib.request import urlopen
+import re
 
 import numpy as np
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.edge.service import Service as EdgeService
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.microsoft import EdgeChromiumDriverManager
 
-option = webdriver.ChromeOptions()
+option = webdriver.EdgeOptions()
 option.add_argument("start-maximized")
 
 # num requests will always be 4 as it is the maximum number of pages
 # in one search
 NUM_REQUESTS = 19
 ROOT_URL = "https://www.poderjudicial.es"
+month_to_num = {
+    "enero": '01',
+    "febrero": '02',
+    "marzo": '03',
+    "abril": '04',
+    "mayo": '05',
+    "junio": '06',
+    "julio": '07',
+    "agosto": '08',
+    "septiembre": '09',
+    "octubre": '10',
+    "noviembre": '11',
+    "diciembre": '12'
+}
 
 
 class JurisdictionScrapper():
@@ -48,8 +62,9 @@ class JurisdictionScrapper():
         np.savez(output_path, data)
         return links_set
 
-    def get_href(self, element):
+    def get_href(self, link):
         """Get HREF from embedded HTML link information"""
+        element = link.get_attribute('innerHTML')
         start_link = element.find("a href", 0)
         start_quote = element.find('"', start_link)
         end_quote = element.find('"', start_quote + 1)
@@ -71,11 +86,12 @@ class JurisdictionScrapper():
         all required conditions (date, location, organ, etc) run que query
         and extract the links from the results
         """
-        driver = webdriver.Chrome(service=Service(
-            ChromeDriverManager().install()),
-                                  options=option)
-        wait = WebDriverWait(driver, 30)
 
+        edge_service = EdgeService(
+            executable_path=EdgeChromiumDriverManager().install())
+        driver = webdriver.Edge(service=edge_service, options=option)
+
+        wait = WebDriverWait(driver, 30)
         jurisprudence_searcher_url = os.path.join(root, "search",
                                                   "indexAN.jsp")
         driver.get(jurisprudence_searcher_url)
@@ -148,7 +164,7 @@ class JurisdictionScrapper():
         search.send_keys(Keys.RETURN)
 
         last_date = None
-        link_list = list()
+        links_juris = list()
         for i in range(int(num_requests)):
 
             # wait while page is loading
@@ -157,14 +173,8 @@ class JurisdictionScrapper():
                     (By.ID, "jurisprudenciaresults_searchresults")))
 
             # identify links
-            links = text.find_elements(By.CLASS_NAME, 'title')
-
-            for link in links:
-                link_attrs = link.get_attribute('innerHTML')
-                link_href = self.get_href(link_attrs)
-                final_url = self.get_src(
-                    urlopen(link_href).read().decode("latin-1"))
-                link_list.append(root + final_url)
+            link_elements = text.find_elements(By.CLASS_NAME, 'title')
+            links_juris.extend([self.get_href(link) for link in link_elements])
 
             # click on next page button
             main = WebDriverWait(driver, 10).until(
@@ -172,15 +182,20 @@ class JurisdictionScrapper():
 
             # if last page select date of last sentence
             if i == int(num_requests) - 1:
-                last_date = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located(
-                        (By.XPATH, "(//li[contains(text(),'Fecha')])[10]"
-                         ))).get_attribute('innerHTML')
-                last_date = last_date[10:-5]
+                xpath_content = "//div[starts-with(@id, 'jurisprudenciaresults_content-')]"  # noqa: E501
+                content = driver.find_elements(By.XPATH, xpath_content)
+                juris_title = content[-1].find_element(By.CLASS_NAME,
+                                                       "title").text
+
+                date_parts = re.search(r'\d{2}\sde\s\w+\sde\s\d{4}',
+                                       juris_title).group().split(' de ')
+
+                month_num = month_to_num.get(date_parts[1])
+                last_date = f'{date_parts[0]}/{month_num}/{date_parts[2]}'
 
             main.clear()
             main.send_keys("{}".format(i + 2))
             main.send_keys(Keys.RETURN)
 
         driver.quit()
-        return last_date, link_list
+        return last_date, links_juris
