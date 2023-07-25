@@ -4,7 +4,8 @@
         "date": "10/12/2020",
         "textual_query": "clausulas abusivas",
         "num_searches": 3,
-        "output_path": "data/raw/data_links"
+        "output_path_general_links": "data/raw/data_general_links",
+        "output_path_pdf_links": "data/raw/data_pdf_links"
         },
     "db":
         {

@@ -12,9 +12,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
 
-option = webdriver.EdgeOptions()
-option.add_argument("start-maximized")
-
 # num requests will always be 4 as it is the maximum number of pages
 # in one search
 NUM_REQUESTS = 19
@@ -37,9 +34,16 @@ month_to_num = {
 
 class JurisdictionScrapper():
     def __init__(self):
-        pass
 
-    def __call__(self, date, textual_query, num_searches, output_path):
+        # initialize driver's service and options
+        self.edge_service = EdgeService(
+            executable_path=EdgeChromiumDriverManager().install())
+
+        self.option = webdriver.EdgeOptions()
+        self.option.add_argument("start-maximized")
+
+    def __call__(self, date, textual_query, num_searches,
+                 output_path_general_links, output_path_pdf_links):
 
         links_set = set()
         for i in range(num_searches):
@@ -49,20 +53,34 @@ class JurisdictionScrapper():
             else:
                 state = True
 
-            date, elements = self.get_links(root=ROOT_URL,
-                                            name=textual_query,
-                                            num_requests=NUM_REQUESTS,
-                                            date=date,
-                                            fecha_state=state)
+            date, elements = self.get_general_links_to_juris(
+                root=ROOT_URL,
+                name=textual_query,
+                num_requests=NUM_REQUESTS,
+                date=date,
+                fecha_state=state)
 
             for element in elements:
                 links_set.add(element)
 
-        data = np.array(links_set)
-        np.savez(output_path, data)
+        geral_links_array = np.array(links_set)
+        np.savez(output_path_general_links, geral_links_array)
+
+        pdf_links = set()
+        for lk in links_set:
+            pdf_lk = self.get_link_to_pdf_juris(lk)
+            pdf_links.add(pdf_lk)
+
+        pdf_links_array = np.array(pdf_links)
+        np.savez(output_path_pdf_links, pdf_links_array)
+
         return links_set
 
-    def get_href(self, link):
+    def init_driver(self):
+        driver = webdriver.Edge(service=self.edge_service, options=self.option)
+        return driver
+
+    def get_general_link_href(self, link):
         """Get HREF from embedded HTML link information"""
         element = link.get_attribute('innerHTML')
         start_link = element.find("a href", 0)
@@ -71,31 +89,49 @@ class JurisdictionScrapper():
         link = element[start_quote + 1:end_quote]
         return link
 
-    def get_src(self, element):
-        """Get SRC from HREF direction"""
-        start = element.find("objtcontentpdf", 0)
-        start_link = element.find("a href", start)
-        start_quote = element.find('"', start_link)
-        end_quote = element.find('"', start_quote + 1)
-        link = element[start_quote + 1:end_quote]
+    def get_link_to_pdf_juris(self, general_link):
+
+        driver = self.init_driver()
+        wait = WebDriverWait(driver, 30)
+
+        driver.get(general_link)
+
+        # deactivate pop-up window
+        wait.until(
+            EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, "button.close"))).click()
+
+        # get link to jurisprudence pdf
+        pdf_box_element = driver.find_element(By.ID, "objtcontentpdf")
+        html_element = pdf_box_element.get_attribute('innerHTML')
+        start_link_str = 'a href="'
+        start_link = html_element.find(start_link_str) + len(start_link_str)
+        end_link = html_element.find('"', start_link)
+        link = html_element[start_link:end_link]
+
+        driver.quit()
         return link
 
-    def get_links(self, root, name, num_requests, date, fecha_state=False):
+    def get_general_links_to_juris(self,
+                                   root,
+                                   name,
+                                   num_requests,
+                                   date,
+                                   fecha_state=False):
         """
         Create a driver and access to the searcher, make the query with
         all required conditions (date, location, organ, etc) run que query
         and extract the links from the results
         """
 
-        edge_service = EdgeService(
-            executable_path=EdgeChromiumDriverManager().install())
-        driver = webdriver.Edge(service=edge_service, options=option)
+        driver = self.init_driver()
 
         wait = WebDriverWait(driver, 30)
         jurisprudence_searcher_url = os.path.join(root, "search",
                                                   "indexAN.jsp")
         driver.get(jurisprudence_searcher_url)
 
+        # deactivate pop-up window
         wait.until(
             EC.element_to_be_clickable(
                 (By.CSS_SELECTOR, "button.close"))).click()
@@ -174,7 +210,8 @@ class JurisdictionScrapper():
 
             # identify links
             link_elements = text.find_elements(By.CLASS_NAME, 'title')
-            links_juris.extend([self.get_href(link) for link in link_elements])
+            links_juris.extend(
+                [self.get_general_link_href(link) for link in link_elements])
 
             # click on next page button
             main = WebDriverWait(driver, 10).until(
