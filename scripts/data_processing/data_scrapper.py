@@ -105,7 +105,7 @@ class JurisdictionScrapper():
         driver = EdgeDriver(service=self.edge_service, options=self.option)
         return driver
 
-    def get_general_link_href(self, element: WebElement):
+    def get_general_link_href(self, element: WebElement) -> str:
         """
         Extracts the href value from the given WebElement.
 
