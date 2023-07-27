@@ -89,9 +89,39 @@ class JurisdictionPreprocessor():
 
         return doc
 
-    def extract_information_from_doc(self, doc):
-        """Extract information from document that will
-        be stored in the database"""
+    def extract_information_from_doc(self, doc: str) -> dict:
+        """
+        Extracts information from the document that will be stored in the
+        database.
+
+        Parameters:
+            doc (str): The text of the document to extract information from.
+
+        Returns:
+            dict: A dictionary containing extracted information with the
+                    following keys:
+                  - "id_cendoj": The CENDOJ id extracted from the document.
+                  - "date": The date extracted from the document.
+                  - "cuestiones": The content under the section "Cuestiones" in
+                                  the document.
+                  - "materia": The content under the section "Materia" in the
+                               document.
+                  - "parte_recurrente": The content under the section
+                                        "Parte recurrente/apelante" in the
+                                        document.
+                  - "parte_recurrida": The content under the section
+                                       "Parte recurrida/apelada" in document
+                  - "antecedentes": The content under the section
+                                    "Antecedentes de hecho" in the document.
+                  - "fundamentos": The content under the section "Fundamentos"
+                                   in the document.
+                  - "first_fallo": The first fallo extracted from the
+                                   antecedentes section.
+                  - "target_fallo": The fallo definitivo extracted from
+                                    the document.
+                  - "costas_pro": A flag (1 or 0) indicating if
+                                 "Costas Procesales" were found in document.
+        """
         dict_info = dict()
 
         # CENDOJ id
