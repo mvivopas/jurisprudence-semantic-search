@@ -83,15 +83,18 @@ class JurisdictionScrapper():
                 links_set.add(element)
 
         geral_links_array = np.array(links_set)
-        np.savez(output_path_general_links, geral_links_array)
+        np.save(output_path_general_links,
+                geral_links_array,
+                allow_pickle=True)
 
         pdf_links = set()
         for lk in links_set:
-            pdf_lk = self.get_link_to_pdf_juris(lk)
-            pdf_links.add(pdf_lk)
+            pdf_base_lk = self.get_link_to_pdf_juris(lk)
+            pdf_final_lk = ROOT_URL + pdf_base_lk.replace('amp;', '')
+            pdf_links.add(pdf_final_lk)
 
         pdf_links_array = np.array(pdf_links)
-        np.savez(output_path_pdf_links, pdf_links_array)
+        np.save(output_path_pdf_links, pdf_links_array, allow_pickle=True)
 
         return links_set
 
