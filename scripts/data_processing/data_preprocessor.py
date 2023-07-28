@@ -27,6 +27,7 @@ FUNDAMENTOS_PATTERN = re.compile(
 FALLO_PATTERN = re.compile(r'(?i)(F\W?A\W?L\W?L|PARTE DISPOSITIVA|'
                            r'P A R T E D I S P O S I T I V A|firmamos)')
 COSTAS_PATTERN = re.compile(r'\bno\W+(?:\w+\W+){1,6}?costas\b')
+SENTIDO_FALLO_PATTERN = re.compile(r'(?i)(desestim)')
 
 
 class JurisdictionPreprocessor():
@@ -220,29 +221,22 @@ class JurisdictionPreprocessor():
             dict_info["fundamentos"] = INFO_NOT_FOUND_STRING
 
         # Fallo previo
-        first_fallo = self.sentido_fallo(dict_info["antecedentes"])
-        dict_info["first_fallo"] = first_fallo
+        match_sentido_fallo_1 = SENTIDO_FALLO_PATTERN.search(
+            dict_info["antecedentes"])
+
+        dict_info["first_fallo"] = 1 if match_sentido_fallo_1 else 0
 
         doc_fundamentos_fallo = doc[end_antecedentes:]
         # Fallo definitivo
-        target_fallo = self.sentido_fallo(doc_fundamentos_fallo)
-        dict_info["target_fallo"] = target_fallo
+        match_sentido_fallo_last = SENTIDO_FALLO_PATTERN.search(
+            doc_fundamentos_fallo)
+        dict_info["target_fallo"] = 1 if match_sentido_fallo_last else 0
 
         # Costas Procesales
-        costas_pro = 1
-        if COSTAS_PATTERN.search(doc_fundamentos_fallo):
-            costas_pro = 0
-
-        dict_info["costas_pro"] = costas_pro
+        match_costas = COSTAS_PATTERN.search(doc_fundamentos_fallo)
+        dict_info["costas_pro"] = 0 if match_costas else 1
 
         return dict_info
-
-    def sentido_fallo(self, fallo):
-        if re.search(r'(?i)(desestim)', fallo):
-            sentido_fallo = 0
-        else:
-            sentido_fallo = 1
-        return sentido_fallo
 
     def basic_text_cleaning(self, text):
         """
