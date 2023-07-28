@@ -144,25 +144,24 @@ class JurisdictionPreprocessor():
                     following keys:
                   - "id_cendoj": The CENDOJ id extracted from the document.
                   - "date": The date extracted from the document.
-                  - "cuestiones": The content under the section "Cuestiones" in
-                                  the document.
-                  - "materia": The content under the section "Materia" in the
-                               document.
-                  - "parte_recurrente": The content under the section
-                                        "Parte recurrente/apelante" in the
-                                        document.
-                  - "parte_recurrida": The content under the section
-                                       "Parte recurrida/apelada" in document
-                  - "antecedentes": The content under the section
-                                    "Antecedentes de hecho" in the document.
-                  - "fundamentos": The content under the section "Fundamentos"
-                                   in the document.
-                  - "first_fallo": The first fallo extracted from the
-                                   antecedentes section.
-                  - "target_fallo": The fallo definitivo extracted from
-                                    the document.
-                  - "costas_pro": A flag (1 or 0) indicating if
-                                 "Costas Procesales" were found in document.
+                  - "keyphrases": The content under the section "Cuestiones" in
+                        the document.
+                  - "trial_type": The content under the section "Materia" in
+                        document.
+                  - "recurring_part": The content under the section
+                        "Parte recurrente/apelante" in the document.
+                  - "appellant": The content under the section
+                        "Parte recurrida/apelada" in document
+                  - "factual_background": The content under the section
+                        "Antecedentes de hecho" in the document.
+                  - "factual_grounds": The content under the section
+                        "Fundamentos" in the document.
+                  - "first_verdict": The first fallo extracted from the
+                        antecedentes section.
+                  - "last_verdict": The fallo definitivo extracted from
+                        the document.
+                  - "legal_costs": A flag (1 or 0) indicating if
+                        "Costas Procesales" were found in document.
         """
         dict_info = dict()
 
@@ -175,11 +174,11 @@ class JurisdictionPreprocessor():
         dict_info["date"] = date_match
 
         # Cuestiones part of document
-        dict_info["cuestiones"] = self.extract_section_content(
+        dict_info["keyphrases"] = self.extract_section_content(
             doc, section_name="Cuestiones")
 
         # Materia part of document
-        dict_info["materia"] = self.extract_section_content(
+        dict_info["trial_type"] = self.extract_section_content(
             doc, section_name="Materia")
 
         # Parte recurrente/apelante part of document
@@ -191,10 +190,10 @@ class JurisdictionPreprocessor():
         else:
             parte_recurrente_match = INFO_NOT_FOUND_STRING
 
-        dict_info["parte_recurrente"] = parte_recurrente_match
+        dict_info["recurring_part"] = parte_recurrente_match
 
         # Parte recurrida/apelada part of document
-        dict_info["parte_recurrida"] = self.extract_section_content(
+        dict_info["appellant"] = self.extract_section_content(
             doc, section_name="Parte recurrida")
 
         # Antecedentes de hecho part of document
@@ -202,39 +201,39 @@ class JurisdictionPreprocessor():
         match_fundamentos = FUNDAMENTOS_PATTERN.search(doc)
         if match_fundamentos:
             end_antecedentes = match_fundamentos.span()[0]
-            dict_info["antecedentes"] = self.extract_section_content(
+            dict_info["factual_background"] = self.extract_section_content(
                 doc,
                 section_name=antecedentes_str,
                 section_end_pos=end_antecedentes,
                 clean_text=False)
         else:
-            dict_info["antecedentes"] = INFO_NOT_FOUND_STRING
+            dict_info["factual_background"] = INFO_NOT_FOUND_STRING
 
         # Fundamentos part
         match_fallo = FALLO_PATTERN.search(doc)
         if match_fundamentos and match_fallo:
             start_fund = match_fundamentos.span()[1]
             start_fallo = match_fallo.span()[0]
-            dict_info["fundamentos"] = self.extract_section_content(
+            dict_info["factual_grounds"] = self.extract_section_content(
                 doc, section_start_pos=start_fund, section_end_pos=start_fallo)
         else:
-            dict_info["fundamentos"] = INFO_NOT_FOUND_STRING
+            dict_info["factual_grounds"] = INFO_NOT_FOUND_STRING
 
         # Fallo previo
         match_sentido_fallo_1 = SENTIDO_FALLO_PATTERN.search(
-            dict_info["antecedentes"])
+            dict_info["factual_background"])
 
-        dict_info["first_fallo"] = 1 if match_sentido_fallo_1 else 0
+        dict_info["first_verdict"] = 1 if match_sentido_fallo_1 else 0
 
         doc_fundamentos_fallo = doc[end_antecedentes:]
         # Fallo definitivo
         match_sentido_fallo_last = SENTIDO_FALLO_PATTERN.search(
             doc_fundamentos_fallo)
-        dict_info["target_fallo"] = 1 if match_sentido_fallo_last else 0
+        dict_info["last_verdict"] = 1 if match_sentido_fallo_last else 0
 
         # Costas Procesales
         match_costas = COSTAS_PATTERN.search(doc_fundamentos_fallo)
-        dict_info["costas_pro"] = 0 if match_costas else 1
+        dict_info["legal_costs"] = 0 if match_costas else 1
 
         return dict_info
 
