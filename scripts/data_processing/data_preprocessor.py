@@ -24,7 +24,7 @@ PARTE_RECURRENTE_PATTERN = re.compile(r'(?i)(Parte recurrente/Solicitante:|'
                                       r'Parte recurrente|Procurador)')
 FUNDAMENTOS_PATTERN = re.compile(
     r'(F\s?U\s?N\s?D\s?A\s?M\s?E\s?N\s?T\s?O\s?S|RAZONAMIENTOS JURÍDICOS)')
-FALLO_PATTERN = re.compile(r'(?i)(F\W?A\W?L\W?L|PARTE DISPOSITIVA|'
+FALLO_PATTERN = re.compile(r'(F\W?A\W?L\W?L|PARTE DISPOSITIVA|'
                            r'P A R T E D I S P O S I T I V A|firmamos)')
 COSTAS_PATTERN = re.compile(r'\bno\W+(?:\w+\W+){1,6}?costas\b')
 SENTIDO_FALLO_PATTERN = re.compile(r'(?i)(desestim)')
@@ -93,9 +93,9 @@ class JurisdictionPreprocessor():
 
     def extract_section_content(self,
                                 doc: str,
-                                section_name: Optional[str],
-                                section_start_pos: Optional[int],
-                                section_end_pos: Optional[int],
+                                section_name: Optional[str] = None,
+                                section_start_pos: Optional[int] = None,
+                                section_end_pos: Optional[int] = None,
                                 clean_text: bool = True) -> str:
         """
         Extracts the content under the specified section name from
@@ -126,10 +126,11 @@ class JurisdictionPreprocessor():
             end_section = doc.find('\n', start_section)
 
         section_text = doc[start_section:end_section]
+
         if clean_text:
             section_text = re.sub(r'\W+', ' ', section_text).strip()
 
-            return section_text
+        return section_text
 
     def extract_information_from_doc(self, doc: str) -> dict:
         """
@@ -222,14 +223,14 @@ class JurisdictionPreprocessor():
         # Fallo previo
         match_sentido_fallo_1 = SENTIDO_FALLO_PATTERN.search(
             dict_info["factual_background"])
+        # if pattern is found: first verdict -> dismiss (0) otherwise 1
+        dict_info["first_verdict"] = 0 if match_sentido_fallo_1 else 1
 
-        dict_info["first_verdict"] = 1 if match_sentido_fallo_1 else 0
-
-        doc_fundamentos_fallo = doc[end_antecedentes:]
+        doc_fundamentos_fallo = doc[match_fallo.span()[1]:]
         # Fallo definitivo
         match_sentido_fallo_last = SENTIDO_FALLO_PATTERN.search(
             doc_fundamentos_fallo)
-        dict_info["last_verdict"] = 1 if match_sentido_fallo_last else 0
+        dict_info["last_verdict"] = 0 if match_sentido_fallo_last else 1
 
         # Costas Procesales
         match_costas = COSTAS_PATTERN.search(doc_fundamentos_fallo)
