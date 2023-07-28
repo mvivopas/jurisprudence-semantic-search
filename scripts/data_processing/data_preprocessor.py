@@ -1,6 +1,7 @@
 import io
 import re
 import string
+from typing import Optional
 
 import nltk
 import requests
@@ -89,6 +90,46 @@ class JurisdictionPreprocessor():
 
         return doc
 
+    def extract_section_content(self,
+                                doc: str,
+                                section_name: Optional[str],
+                                section_start_pos: Optional[int],
+                                section_end_pos: Optional[int],
+                                clean_text: bool = True) -> str:
+        """
+        Extracts the content under the specified section name from
+        the document.
+
+        Parameters:
+            doc (str): The text of the document to extract information from.
+            section_name (str): The name of the section to extract.
+
+        Returns:
+            str: The extracted content of the specified section or
+                 INFO_NOT_FOUND_STRING if not found.
+        """
+        if section_name:
+            start_section = doc.find(section_name, 0)
+
+            if start_section == -1:
+                return INFO_NOT_FOUND_STRING
+            else:
+                start_section += len(section_name)
+
+        if section_start_pos:
+            start_section = section_start_pos
+
+        if section_end_pos:
+            end_section = section_end_pos
+        else:
+            end_section = doc.find('\n', start_section)
+
+        section_text = doc[start_section:end_section]
+        if clean_text:
+            section_text = re.sub(r'\W+', ' ', section_text).strip()
+
+            return section_text
+
     def extract_information_from_doc(self, doc: str) -> dict:
         """
         Extracts information from the document that will be stored in the
@@ -133,74 +174,53 @@ class JurisdictionPreprocessor():
         dict_info["date"] = date_match
 
         # Cuestiones part of document
-        cuestiones_str = 'Cuestiones'
-        if doc[:2000].find(cuestiones_str, 0) != -1:
-            start_cuest = doc.find(cuestiones_str, 0) + len(cuestiones_str)
-            end_cuest = doc.find('\n', start_cuest)
-            cuestiones = re.sub(r'\W+', ' ',
-                                doc[start_cuest:end_cuest]).strip()
-        else:
-            cuestiones = INFO_NOT_FOUND_STRING
-
-        dict_info["cuestiones"] = cuestiones
+        dict_info["cuestiones"] = self.extract_section_content(
+            doc, section_name="Cuestiones")
 
         # Materia part of document
-        materia_str = 'Materia'
-        match_materia = doc.find(materia_str, 0)
-        if match_materia == -1:
-            materia = INFO_NOT_FOUND_STRING
-        else:
-            start_materia = match_materia + len(materia_str)
-            end_materia = doc.find('\n', start_materia)
-            materia = re.sub(r'\W+', ' ',
-                             doc[start_materia:end_materia]).strip()
-
-        dict_info["materia"] = materia
+        dict_info["materia"] = self.extract_section_content(
+            doc, section_name="Materia")
 
         # Parte recurrente/apelante part of document
         parte_recurrente_match = PARTE_RECURRENTE_PATTERN.search(doc)
         if parte_recurrente_match:
             start_recurrente = parte_recurrente_match.span(1)[-1]
-            end_recurrente = doc.find('\n', start_recurrente)
-            recurrente = doc[start_recurrente:end_recurrente]
-            parte_recurrente_match = re.sub(r'\W+', ' ', recurrente).strip()
+            parte_recurrente_match = self.extract_section_content(
+                doc, section_start_pos=start_recurrente)
         else:
             parte_recurrente_match = INFO_NOT_FOUND_STRING
 
         dict_info["parte_recurrente"] = parte_recurrente_match
 
         # Parte recurrida/apelada part of document
-        recurrida_str = 'Parte recurrida'
-        match_recurrida = doc.find(recurrida_str, 0)
-        if match_recurrida == -1:
-            parte_recurrida = INFO_NOT_FOUND_STRING
-        else:
-            start_recurrida = match_recurrida + len(recurrida_str)
-            end_recurrida = doc.find('\n', start_recurrida)
-            parte_recurrida = doc[start_recurrida:end_recurrida]
-
-        dict_info["parte_recurrida"] = parte_recurrida
+        dict_info["parte_recurrida"] = self.extract_section_content(
+            doc, section_name="Parte recurrida")
 
         # Antecedentes de hecho part of document
         antecedentes_str = 'ANTECEDENTES DE HECHO'
-        match_antec = doc.find(antecedentes_str, 0)
         match_fundamentos = FUNDAMENTOS_PATTERN.search(doc)
-        if match_antec == -1:
-            antecedentes = INFO_NOT_FOUND_STRING
-        else:
-            start_antecedentes = match_antec + len(antecedentes_str)
+        if match_fundamentos:
             end_antecedentes = match_fundamentos.span()[0]
-            antecedentes = doc[start_antecedentes:end_antecedentes]
-
-        dict_info["antecedentes"] = antecedentes
+            dict_info["antecedentes"] = self.extract_section_content(
+                doc,
+                section_name=antecedentes_str,
+                section_end_pos=end_antecedentes,
+                clean_text=False)
+        else:
+            dict_info["antecedentes"] = INFO_NOT_FOUND_STRING
 
         # Fundamentos part
         match_fallo = FALLO_PATTERN.search(doc)
-        fundamentos = doc[match_fundamentos.span()[1]:match_fallo.span()[0]]
-        dict_info["fundamentos"] = fundamentos
+        if match_fundamentos and match_fallo:
+            start_fund = match_fundamentos.span()[1]
+            start_fallo = match_fallo.span()[0]
+            dict_info["fundamentos"] = self.extract_section_content(
+                doc, section_start_pos=start_fund, section_end_pos=start_fallo)
+        else:
+            dict_info["fundamentos"] = INFO_NOT_FOUND_STRING
 
         # Fallo previo
-        first_fallo = self.sentido_fallo(antecedentes)
+        first_fallo = self.sentido_fallo(dict_info["antecedentes"])
         dict_info["first_fallo"] = first_fallo
 
         doc_fundamentos_fallo = doc[end_antecedentes:]
