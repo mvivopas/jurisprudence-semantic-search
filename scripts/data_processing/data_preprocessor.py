@@ -22,12 +22,17 @@ CENDOJ_ID_PATTERN = re.compile(r'\d{20}')
 DATE_PATTERN = re.compile(r'Fecha:\s(\d{2}/\d{2}/\d{4})')
 RECURRING_PATTERN = re.compile(r'(?i)(Parte recurrente/Solicitante:|'
                                r'Parte recurrente|Procurador)')
-FUNDAMENTOS_PATTERN = re.compile(
+FACTUAL_GROUND_HEADER_PATTERN = re.compile(
     r'(F\s?U\s?N\s?D\s?A\s?M\s?E\s?N\s?T\s?O\s?S|RAZONAMIENTOS JURÍDICOS)')
-FALLO_PATTERN = re.compile(r'(F\W?A\W?L\W?L|PARTE DISPOSITIVA|'
-                           r'P A R T E D I S P O S I T I V A|firmamos)')
-COSTAS_PATTERN = re.compile(r'\bno\W+(?:\w+\W+){1,6}?costas\b')
-SENTIDO_FALLO_PATTERN = re.compile(r'(?i)(desestim)')
+VERDICT_HEADER_PATTERN = re.compile(
+    r'(F\W?A\W?L\W?L|PARTE DISPOSITIVA|'
+    r'P A R T E D I S P O S I T I V A|firmamos)')
+LEGAL_COSTS_PATTERN = re.compile(r'\bno\W+(?:\w+\W+){1,6}?costas\b')
+VERDICT_RESULT_PATTERN = re.compile(r'(?i)\s(des)?estim\w+')
+
+FACTUAL_BACKGROUND_HEADER = 'ANTECEDENTES DE HECHO'
+KEYPHRASE_TITLE = 'Cuestiones'
+APELLANT_TITLE = 'Parte recurrida'
 
 
 class JurisdictionPreprocessor():
@@ -132,6 +137,41 @@ class JurisdictionPreprocessor():
 
         return section_text
 
+    def retrieve_verdict_result(self, verdict_section: str) -> str:
+        """
+        Retrieves the verdict result from the given verdict_section.
+
+        The function searches for the verdict result pattern in the
+        provided verdict_section and then determines the type of verdict
+        based on the result text.
+
+        Parameters:
+            verdict_section (str): The text containing the verdict result.
+
+        Returns:
+            str: The type of verdict represented by a single character:
+                 - 'D': Represents 'Desestimado' (Unfavorable).
+                 - 'EP': Represents 'Estimado Parcialmente'
+                        (Partially Favorable).
+                 - 'E': Represents 'Estimado' (Favorable).
+                 - If the verdict result is not found, returns
+                        INFO_NOT_FOUND_STRING.
+        """
+        match_verdict_result = VERDICT_RESULT_PATTERN.search(verdict_section)
+
+        if match_verdict_result:
+            verdict_result_txt = match_verdict_result.group().lower()
+            if 'des' in verdict_result_txt:
+                result = 'D'  # 'Desfavorable' (Unfavorable)
+            elif 'parcial' in verdict_result_txt:
+                result = 'EP'  # 'Efectos Parciales' (Partial Effects)
+            else:
+                result = 'E'  # 'Favorable' (Favorable)
+        else:
+            result = INFO_NOT_FOUND_STRING
+
+        return result
+
     def extract_information_from_doc(self, doc: str) -> dict:
         """
         Extracts information from the document that will be stored in the
@@ -174,7 +214,7 @@ class JurisdictionPreprocessor():
 
         # Retrieve Litigation Tematic
         dict_info["keyphrases"] = self.extract_section_content(
-            doc, section_name="Cuestiones")
+            doc, section_name=KEYPHRASE_TITLE)
 
         # Retrieve Recurrent Entity
         recurring_ent_match = RECURRING_PATTERN.search(doc)
@@ -189,29 +229,26 @@ class JurisdictionPreprocessor():
 
         # Retrieve Apellant Entity
         dict_info["appellant"] = self.extract_section_content(
-            doc, section_name="Parte recurrida")
+            doc, section_name=APELLANT_TITLE)
 
         # Factual Background section
-        background_str = 'ANTECEDENTES DE HECHO'
-        match_new_facts = FUNDAMENTOS_PATTERN.search(doc)
+        match_new_facts = FACTUAL_GROUND_HEADER_PATTERN.search(doc)
         if match_new_facts:
             background_end_position = match_new_facts.span()[0]
             dict_info["factual_background"] = self.extract_section_content(
                 doc,
-                section_name=background_str,
+                section_name=FACTUAL_BACKGROUND_HEADER,
                 section_end_pos=background_end_position,
                 clean_text=False)
         else:
             dict_info["factual_background"] = INFO_NOT_FOUND_STRING
 
         # Previous Verdict
-        match_backgound_verdict = SENTIDO_FALLO_PATTERN.search(
+        dict_info["first_verdict"] = self.retrieve_verdict_result(
             dict_info["factual_background"])
-        # if pattern is found: first verdict -> dismiss (0) otherwise 1
-        dict_info["first_verdict"] = 0 if match_backgound_verdict else 1
 
         # Factual Ground section
-        match_last_verdict = FALLO_PATTERN.search(
+        match_last_verdict = VERDICT_HEADER_PATTERN.search(
             doc[background_end_position:])
         if match_new_facts and match_last_verdict:
             new_facts_start_position = match_new_facts.span()[1]
@@ -227,13 +264,13 @@ class JurisdictionPreprocessor():
         if match_last_verdict:
             dict_info["verdict_arguments"] = doc[match_last_verdict.span()[1]:]
 
-        # Verdict position
-        match_sentido_fallo_last = SENTIDO_FALLO_PATTERN.search(
+        # Final Verdict Result
+        dict_info["last_verdict"] = self.retrieve_verdict_result(
             dict_info["verdict_arguments"])
-        dict_info["last_verdict"] = 0 if match_sentido_fallo_last else 1
 
-        # Costas Procesales
-        match_costas = COSTAS_PATTERN.search(dict_info["verdict_arguments"])
+        # Legal costs: 0 if desestimated and 1 otherwise
+        match_costas = LEGAL_COSTS_PATTERN.search(
+            dict_info["verdict_arguments"])
         dict_info["legal_costs"] = 0 if match_costas else 1
 
         return dict_info
