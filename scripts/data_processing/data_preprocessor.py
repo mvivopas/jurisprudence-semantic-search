@@ -49,13 +49,12 @@ class JurisdictionPreprocessor():
         # Extract valuable information from document into dictionary
         dict_information = self.extract_information_from_doc(text)
 
-        # Basic cleaning
-        clean_corpus = self.basic_text_cleaning(
-            dict_information["fundamentos"])
+        # Add url to doc into document information
+        dict_information["doc_url"] = url_doc
 
         # Tokenize and lemmatize
-        std_corpus = self.tokenize_and_lemmatize_text(clean_corpus)
-        dict_information["clean_fundamentos"] = std_corpus
+        # std_corpus = self.tokenize_and_lemmatize_text(clean_corpus)
+        # dict_information["clean_fundamentos"] = std_corpus
 
         return dict_information
 
@@ -274,75 +273,6 @@ class JurisdictionPreprocessor():
         dict_info["legal_costs"] = 0 if match_costas else 1
 
         return dict_info
-
-    def basic_text_cleaning(self, text):
-        """
-        Perform a basic cleaning of the document to remove
-        unnecessary characters and standarize some common patterns.
-        --> This function will render unnecessary with a sufficient
-        amount of data
-        """
-
-        # num pag out
-        text_clean = re.sub(r'(\n\d\n)', '', text)
-
-        # ordered lists out
-        text_clean = re.sub(r'(\n\d[\d]?\. | \d\.\-)', '', text_clean)
-
-        # \x0c out
-        text_clean = re.sub(r'(\x0c)', '', text_clean)
-
-        # \n out
-        text_clean = re.sub('\n', ' ', text_clean)
-
-        # to lower case
-        text_clean = text_clean.lower()
-
-        # primero segundo tercero out
-        text_clean = re.sub(
-            r'(primero[\s]?(\.\-|\.)|segundo[\s]?(\.\-|\.)|'
-            r'tercero[\s]?(\.\-|\.))', '', text_clean)
-
-        # find all artículos
-        text_clean = re.sub(
-            r'(artículo[s]?|articulo[s]?|art\.|\bart\b|arts[.])', 'articulo',
-            text_clean)
-
-        # Find and Sub órganos judiciales por acrónimos ##
-        # Sentencias / Tribunal Supremo
-        text_clean = re.sub(r'sentencia[s]? de[l]? tribunal supremo', 'stjs',
-                            text_clean)
-        text_clean = re.sub(r'tribunal supremo', 'ts', text_clean)
-
-        # Sentencia/Tribunal de Justicia de la Unión Europea
-        text_clean = re.sub(r'tribunal de justicia de la unión europea',
-                            'tjue', text_clean)
-
-        # Ley de Enjuiciamiento Civil
-        text_clean = re.sub(r'ley de enjuiciamiento civil', 'lec', text_clean)
-
-        # Código Civil de Cataluña
-
-        codigo_cat = [
-            re.compile(r'cccat'),
-            re.compile(r'código civil de catalunya'),
-            re.compile(r'código civil de cataluña'),
-            re.compile(r'cc de cataluña'),
-            re.compile(r'cc de catalunya')
-        ]
-
-        for pattern in codigo_cat:
-            text_clean = re.sub(pattern, 'ccat', text_clean)
-
-        # código civil
-        text_clean = re.sub(r'código civil|codigo civil', 'cc', text_clean)
-
-        # Ley General para la Defensa de los Consumidores y Usuarios
-        text_clean = re.sub(
-            r'ley general para la defensa de los consumidores y usuarios',
-            'lgdcu', text_clean)
-
-        return text_clean
 
     def tokenize_and_lemmatize_text(self, text):
         """Tokenize text, remove stopwords, common punctuation and lemmatize"""
