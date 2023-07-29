@@ -20,8 +20,8 @@ INFO_NOT_FOUND_STRING = 'Not provided'
 # REGEX PATTERNS
 CENDOJ_ID_PATTERN = re.compile(r'\d{20}')
 DATE_PATTERN = re.compile(r'Fecha:\s(\d{2}/\d{2}/\d{4})')
-PARTE_RECURRENTE_PATTERN = re.compile(r'(?i)(Parte recurrente/Solicitante:|'
-                                      r'Parte recurrente|Procurador)')
+RECURRING_PATTERN = re.compile(r'(?i)(Parte recurrente/Solicitante:|'
+                               r'Parte recurrente|Procurador)')
 FUNDAMENTOS_PATTERN = re.compile(
     r'(F\s?U\s?N\s?D\s?A\s?M\s?E\s?N\s?T\s?O\s?S|RAZONAMIENTOS JURÍDICOS)')
 FALLO_PATTERN = re.compile(r'(F\W?A\W?L\W?L|PARTE DISPOSITIVA|'
@@ -147,8 +147,6 @@ class JurisdictionPreprocessor():
                   - "date": The date extracted from the document.
                   - "keyphrases": The content under the section "Cuestiones" in
                         the document.
-                  - "trial_type": The content under the section "Materia" in
-                        document.
                   - "recurring_part": The content under the section
                         "Parte recurrente/apelante" in the document.
                   - "appellant": The content under the section
@@ -166,74 +164,76 @@ class JurisdictionPreprocessor():
         """
         dict_info = dict()
 
-        # CENDOJ id
+        # Retrieve CENDOJ id
         cendoj_id_match = CENDOJ_ID_PATTERN.search(doc).group()
         dict_info["id_cendoj"] = cendoj_id_match
 
-        # Date
+        # Retrieve Litigation Date
         date_match = DATE_PATTERN.search(doc).group(1)
         dict_info["date"] = date_match
 
-        # Cuestiones part of document
+        # Retrieve Litigation Tematic
         dict_info["keyphrases"] = self.extract_section_content(
             doc, section_name="Cuestiones")
 
-        # Materia part of document
-        dict_info["trial_type"] = self.extract_section_content(
-            doc, section_name="Materia")
-
-        # Parte recurrente/apelante part of document
-        parte_recurrente_match = PARTE_RECURRENTE_PATTERN.search(doc)
-        if parte_recurrente_match:
-            start_recurrente = parte_recurrente_match.span(1)[-1]
-            parte_recurrente_match = self.extract_section_content(
-                doc, section_start_pos=start_recurrente)
+        # Retrieve Recurrent Entity
+        recurring_ent_match = RECURRING_PATTERN.search(doc)
+        if recurring_ent_match:
+            rec_start_position = recurring_ent_match.span(1)[-1]
+            recurring_ent_match = self.extract_section_content(
+                doc, section_start_pos=rec_start_position)
         else:
-            parte_recurrente_match = INFO_NOT_FOUND_STRING
+            recurring_ent_match = INFO_NOT_FOUND_STRING
 
-        dict_info["recurring_part"] = parte_recurrente_match
+        dict_info["recurring_part"] = recurring_ent_match
 
-        # Parte recurrida/apelada part of document
+        # Retrieve Apellant Entity
         dict_info["appellant"] = self.extract_section_content(
             doc, section_name="Parte recurrida")
 
-        # Antecedentes de hecho part of document
-        antecedentes_str = 'ANTECEDENTES DE HECHO'
-        match_fundamentos = FUNDAMENTOS_PATTERN.search(doc)
-        if match_fundamentos:
-            end_antecedentes = match_fundamentos.span()[0]
+        # Factual Background section
+        background_str = 'ANTECEDENTES DE HECHO'
+        match_new_facts = FUNDAMENTOS_PATTERN.search(doc)
+        if match_new_facts:
+            background_end_position = match_new_facts.span()[0]
             dict_info["factual_background"] = self.extract_section_content(
                 doc,
-                section_name=antecedentes_str,
-                section_end_pos=end_antecedentes,
+                section_name=background_str,
+                section_end_pos=background_end_position,
                 clean_text=False)
         else:
             dict_info["factual_background"] = INFO_NOT_FOUND_STRING
 
-        # Fundamentos part
-        match_fallo = FALLO_PATTERN.search(doc)
-        if match_fundamentos and match_fallo:
-            start_fund = match_fundamentos.span()[1]
-            start_fallo = match_fallo.span()[0]
+        # Previous Verdict
+        match_backgound_verdict = SENTIDO_FALLO_PATTERN.search(
+            dict_info["factual_background"])
+        # if pattern is found: first verdict -> dismiss (0) otherwise 1
+        dict_info["first_verdict"] = 0 if match_backgound_verdict else 1
+
+        # Factual Ground section
+        match_last_verdict = FALLO_PATTERN.search(
+            doc[background_end_position:])
+        if match_new_facts and match_last_verdict:
+            new_facts_start_position = match_new_facts.span()[1]
+            verdict_start_position = match_last_verdict.span()[0]
             dict_info["factual_grounds"] = self.extract_section_content(
-                doc, section_start_pos=start_fund, section_end_pos=start_fallo)
+                doc,
+                section_start_pos=new_facts_start_position,
+                section_end_pos=verdict_start_position)
         else:
             dict_info["factual_grounds"] = INFO_NOT_FOUND_STRING
 
-        # Fallo previo
-        match_sentido_fallo_1 = SENTIDO_FALLO_PATTERN.search(
-            dict_info["factual_background"])
-        # if pattern is found: first verdict -> dismiss (0) otherwise 1
-        dict_info["first_verdict"] = 0 if match_sentido_fallo_1 else 1
+        # Verdict argumentation
+        if match_last_verdict:
+            dict_info["verdict_arguments"] = doc[match_last_verdict.span()[1]:]
 
-        doc_fundamentos_fallo = doc[match_fallo.span()[1]:]
-        # Fallo definitivo
+        # Verdict position
         match_sentido_fallo_last = SENTIDO_FALLO_PATTERN.search(
-            doc_fundamentos_fallo)
+            dict_info["verdict_arguments"])
         dict_info["last_verdict"] = 0 if match_sentido_fallo_last else 1
 
         # Costas Procesales
-        match_costas = COSTAS_PATTERN.search(doc_fundamentos_fallo)
+        match_costas = COSTAS_PATTERN.search(dict_info["verdict_arguments"])
         dict_info["legal_costs"] = 0 if match_costas else 1
 
         return dict_info
