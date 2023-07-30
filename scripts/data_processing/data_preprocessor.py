@@ -15,9 +15,18 @@ from pdfminer3.pdfpage import PDFPage
 
 nltk.download('stopwords')
 
+# Assignation string when info is not found
 INFO_NOT_FOUND_STRING = 'Not provided'
 
-# REGEX PATTERNS
+# Exact match strings to be found in doc
+FACTUAL_BACKGROUND_HEADER = 'ANTECEDENTES DE HECHO'
+KEYPHRASE_TITLE = 'Cuestiones'
+APELLANT_TITLE = 'Parte recurrida'
+
+# Long sections' key values to standardize
+LONG_SECTIONS = ["factual_background", "factual_grounds", "verdict_arguments"]
+
+# Regex patterns to find more irregular expressions in doc
 CENDOJ_ID_PATTERN = re.compile(r'\d{20}')
 DATE_PATTERN = re.compile(r'Fecha:\s(\d{2}/\d{2}/\d{4})')
 RECURRING_PATTERN = re.compile(r'(?i)(Parte recurrente/Solicitante:|'
@@ -29,10 +38,6 @@ VERDICT_HEADER_PATTERN = re.compile(
     r'P A R T E D I S P O S I T I V A|firmamos)')
 VERDICT_RESULT_PATTERN = re.compile(
     r'(?i)\W(des)?estim\w+\s(parcial|en\sparte)?')
-
-FACTUAL_BACKGROUND_HEADER = 'ANTECEDENTES DE HECHO'
-KEYPHRASE_TITLE = 'Cuestiones'
-APELLANT_TITLE = 'Parte recurrida'
 
 LEGAL_COSTS_MATCHER = {
     'C1':
@@ -47,6 +52,9 @@ LEGAL_COSTS_MATCHER = {
     'C1C2':
     re.compile(r'(conden\w+|impo\w+|pago).{1,15}costas', re.DOTALL),
 }
+
+BASIC_CLEANING_PATTERNS = [(re.compile(r'\n\n\d{1,2}\n\n\x0c'), ''),
+                           ('JURISPRUDENCIA', ''), ('\n', ' ')]
 
 
 class JurisdictionPreprocessor():
@@ -63,14 +71,13 @@ class JurisdictionPreprocessor():
         # Extract valuable information from document into dictionary
         dict_information = self.extract_information_from_doc(text)
 
-        # NOTE: Create func to clean page numeration and JURISPRUDENCIA words
+        # Add document url into document information dictionary
+        dict_information["url"] = url_doc
 
-        # Add url to doc into document information
-        dict_information["doc_url"] = url_doc
-
-        # Tokenize and lemmatize
-        # std_corpus = self.tokenize_and_lemmatize_text(clean_corpus)
-        # dict_information["clean_fundamentos"] = std_corpus
+        # Tokenize and lemmatize saved sections
+        for sec in LONG_SECTIONS:
+            std_sec = self.standardize_text(dict_information[sec])
+            dict_information[sec] = std_sec
 
         return dict_information
 
@@ -187,6 +194,30 @@ class JurisdictionPreprocessor():
 
         return result
 
+    def text_cleaning(self, dirty_string: str) -> str:
+        """
+        Cleans the input dirty_string by applying basic cleaning patterns.
+
+        The function performs text cleaning on the given `dirty_string`
+        by applying basic cleaning patterns defined in the
+        `BASIC_CLEANING_PATTERNS`. Each pattern is replaced with its
+        corresponding replacement string using the `re.sub` function.
+
+        Parameters:
+            dirty_string (str): The input string containing unclean text.
+
+        Returns:
+            str: The cleaned version of the input `dirty_string` after applying
+                 basic cleaning patterns.
+        """
+        clean_string = dirty_string
+
+        # Apply basic cleaning patterns using regular expressions
+        for rm_pat, repl in BASIC_CLEANING_PATTERNS:
+            clean_string = re.sub(rm_pat, repl, clean_string)
+
+        return clean_string
+
     def retrieve_litigation_costs(self, section: str) -> str:
         """
         Retrieves the litigation costs from the specified section.
@@ -247,6 +278,8 @@ class JurisdictionPreprocessor():
                         "Antecedentes de hecho" in the document.
                   - "factual_grounds": The content under the section
                         "Fundamentos" in the document.
+                  - "verdict_arguments": The content under the section
+                        "Fallo" in the document.
                   - "first_verdict": The first fallo extracted from the
                         antecedentes section.
                   - "last_verdict": The fallo definitivo extracted from
@@ -287,13 +320,17 @@ class JurisdictionPreprocessor():
         match_new_facts = FACTUAL_GROUND_HEADER_PATTERN.search(doc)
         if match_new_facts:
             background_end_position = match_new_facts.span()[0]
-            dict_info["factual_background"] = self.extract_section_content(
+            factual_background = self.extract_section_content(
                 doc,
                 section_name=FACTUAL_BACKGROUND_HEADER,
                 section_end_pos=background_end_position,
                 clean_text=False)
+            # Perform basic text cleaning operations
+            factual_background = self.text_cleaning(factual_background)
         else:
-            dict_info["factual_background"] = INFO_NOT_FOUND_STRING
+            factual_background = INFO_NOT_FOUND_STRING
+
+        dict_info["factual_background"] = factual_background
 
         # Previous Verdict
         dict_info["first_verdict"] = self.retrieve_verdict_result(
@@ -303,19 +340,32 @@ class JurisdictionPreprocessor():
         match_last_verdict = VERDICT_HEADER_PATTERN.search(
             doc[background_end_position:])
         if match_new_facts and match_last_verdict:
+            # Obtain starn and end section positions from patterns
             new_facts_start_position = match_new_facts.span()[1]
             verdict_start_position = match_last_verdict.span()[0]
-            dict_info["factual_grounds"] = self.extract_section_content(
+            # Extract section string
+            factual_grounds = self.extract_section_content(
                 doc,
                 section_start_pos=new_facts_start_position,
                 section_end_pos=verdict_start_position)
+
+            # Perform basic text cleaning operations
+            factual_grounds = self.text_cleaning(factual_grounds)
         else:
-            dict_info["factual_grounds"] = INFO_NOT_FOUND_STRING
+            factual_grounds = INFO_NOT_FOUND_STRING
+
+        dict_info["factual_grounds"] = factual_grounds
 
         # Verdict argumentation
         if match_last_verdict:
-            dict_info["verdict_arguments"] = \
-                doc[match_last_verdict.span()[0] + background_end_position:]
+
+            last_verdict = doc[match_last_verdict.span()[0] +
+                               background_end_position:]
+
+            # Perform basic text cleaning operations
+            last_verdict = self.text_cleaning(last_verdict)
+
+            dict_info["verdict_arguments"] = last_verdict
 
         # Final Verdict Result
         dict_info["last_verdict"] = self.retrieve_verdict_result(
@@ -327,16 +377,35 @@ class JurisdictionPreprocessor():
 
         return dict_info
 
-    def tokenize_and_lemmatize_text(self, text):
-        """Tokenize text, remove stopwords, common punctuation and lemmatize"""
-        # Import spanish stopwords
+    def standardize_text(self, text: str) -> str:
+        """
+        Tokenizes the input text, removes stopwords and common punctuation,
+        and lemmatizes it.
+
+        The following text processing steps are performed on the input `text`:
+        1. Imports Spanish stopwords and discards the word 'no' from the set.
+        2. Adds punctuation to the stopwords set.
+        3. Tokenizes the text into individual words.
+        4. Removes any token that is in the stopwords set.
+        5. Lemmatizes the remaining tokens using the spaCy NLP library.
+        6. Joins the lemmatized tokens back into a single string.
+
+        Parameters:
+            text (str): The input text to be tokenized, cleaned, and lemmatized
+
+        Returns:
+            str: The lemmatized text after tokenization, stopword removal,
+            and lemmatization.
+        """
+        # Import Spanish stopwords
         spanish_stopwords = set(stopwords.words('spanish'))
         spanish_stopwords.discard("no")
         # Add punctuation to stopwords
         stop = set(spanish_stopwords + list(string.punctuation))
-        # Tokenize and keep if not an stopword
+        # Lower words and tokenize
+        # Keep word if not in stopword list
         tokens = [i for i in word_tokenize(text.lower()) if i not in stop]
-        # Lemmatization
+        # Word lemmatization
         lemma_words = [word.lemma_ for word in self.nlp(' '.join(tokens))]
         # Join into a string
         lemma_text = ' '.join(lemma_words)
