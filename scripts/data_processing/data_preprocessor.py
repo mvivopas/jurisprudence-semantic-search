@@ -27,13 +27,20 @@ FACTUAL_GROUND_HEADER_PATTERN = re.compile(
 VERDICT_HEADER_PATTERN = re.compile(
     r'(F\s?A\s?L\s?L|PARTE DISPOSITIVA|'
     r'P A R T E D I S P O S I T I V A|firmamos)')
-LEGAL_COSTS_PATTERN = re.compile(r'\bno\W+(?:\w+\W+){1,6}?costas\b')
 VERDICT_RESULT_PATTERN = re.compile(
     r'(?i)\W(des)?estim\w+\s(parcial|en\sparte)?')
 
 FACTUAL_BACKGROUND_HEADER = 'ANTECEDENTES DE HECHO'
 KEYPHRASE_TITLE = 'Cuestiones'
 APELLANT_TITLE = 'Parte recurrida'
+
+LEGAL_COSTS_MATCHER = {
+    'C1':
+    re.compile(r'(?i)(conden\w+|impo\w+|pago).{1,40}costas.{1,3}'
+               r'(de primera instancia|de la demanda reconvencional)'),
+    'C2':
+    re.compile(r'(conden\w+|impo\w+|pago)\sde\scostas\sen\sesta\sinstancia')
+}
 
 
 class JurisdictionPreprocessor():
@@ -174,6 +181,42 @@ class JurisdictionPreprocessor():
 
         return result
 
+    def retrieve_litigation_costs(self, section: str) -> str:
+        """
+        Retrieves the litigation costs from the specified section.
+
+        The function searches for various legal costs patterns in the
+        given section. If any of the patterns are found and not negated
+        (i.e., "sin" not present before the match), the corresponding legal
+        cost is added to the result string. If no valid legal costs are found,
+        'NC' (No Costs) is returned.
+
+        Parameters:
+            section (str): The text containing the relevant section of the
+                           document where the legal costs are located.
+
+        Returns:
+            str: A string representing the legal costs from the section.
+                 If no valid legal costs are found, 'NC' (No Costs) is returned
+        """
+        # Match legal costs pattern
+        result = ''
+
+        for pat in list(LEGAL_COSTS_MATCHER):
+            match_costs = LEGAL_COSTS_MATCHER[pat].search(section)
+            if match_costs:
+                # If not negated, proceed to assign costs
+                match_pos_start_bf = min(0, match_costs.span()[0] - 15)
+                match_str_bf = section[match_pos_start_bf:match_costs.span(
+                )[0]]
+                if 'sin ' not in match_str_bf:
+                    result += pat
+
+        if result == '':
+            result = 'NC'
+
+        return result
+
     def extract_information_from_doc(self, doc: str) -> dict:
         """
         Extracts information from the document that will be stored in the
@@ -271,10 +314,9 @@ class JurisdictionPreprocessor():
         dict_info["last_verdict"] = self.retrieve_verdict_result(
             dict_info["verdict_arguments"])
 
-        # Legal costs: 0 if desestimated and 1 otherwise
-        match_costas = LEGAL_COSTS_PATTERN.search(
+        # Legal Costs last litigation
+        dict_info["legal_costs"] = self.retrieve_litigation_costs(
             dict_info["verdict_arguments"])
-        dict_info["legal_costs"] = 0 if match_costas else 1
 
         return dict_info
 
