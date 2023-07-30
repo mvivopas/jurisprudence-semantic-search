@@ -38,12 +38,14 @@ LEGAL_COSTS_MATCHER = {
     'C1':
     re.compile(
         r'(?i)(conden\w+|impo\w+|pago).{1,40}costas.{1,3}'
-        r'(de primera instancia|de la demanda reconvencional|del juicio)'),
+        r'(de primera instancia|de la demanda reconvencional|del juicio)',
+        re.DOTALL),
     'C2':
     re.compile(
-        r'(conden\w+|impo\w+|pago).{1,15}costas.{1,10}(instancia|recurso)'),
+        r'(conden\w+|impo\w+|pago).{1,15}costas.{1,10}(instancia|recurso)',
+        re.DOTALL),
     'C1C2':
-    re.compile(r'(conden\w+|impo\w+|pago).{1,15}costas'),
+    re.compile(r'(conden\w+|impo\w+|pago).{1,15}costas', re.DOTALL),
 }
 
 
