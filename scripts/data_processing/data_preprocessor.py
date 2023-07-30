@@ -36,10 +36,14 @@ APELLANT_TITLE = 'Parte recurrida'
 
 LEGAL_COSTS_MATCHER = {
     'C1':
-    re.compile(r'(?i)(conden\w+|impo\w+|pago).{1,40}costas.{1,3}'
-               r'(de primera instancia|de la demanda reconvencional)'),
+    re.compile(
+        r'(?i)(conden\w+|impo\w+|pago).{1,40}costas.{1,3}'
+        r'(de primera instancia|de la demanda reconvencional|del juicio)'),
     'C2':
-    re.compile(r'(conden\w+|impo\w+|pago)\sde\scostas\sen\sesta\sinstancia')
+    re.compile(
+        r'(conden\w+|impo\w+|pago).{1,15}costas.{1,10}(instancia|recurso)'),
+    'C1C2':
+    re.compile(r'(conden\w+|impo\w+|pago).{1,15}costas'),
 }
 
 
@@ -204,12 +208,13 @@ class JurisdictionPreprocessor():
 
         for pat in list(LEGAL_COSTS_MATCHER):
             match_costs = LEGAL_COSTS_MATCHER[pat].search(section)
-            if match_costs:
+            if match_costs and (pat in ['C1', 'C2']
+                                or pat == 'C1C2' and result == ''):
                 # If not negated, proceed to assign costs
                 match_pos_start_bf = min(0, match_costs.span()[0] - 15)
                 match_str_bf = section[match_pos_start_bf:match_costs.span(
                 )[0]]
-                if 'sin ' not in match_str_bf:
+                if 'sin ' not in match_str_bf.lower():
                     result += pat
 
         if result == '':
