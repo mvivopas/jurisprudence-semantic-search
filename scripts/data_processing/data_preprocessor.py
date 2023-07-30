@@ -25,10 +25,11 @@ RECURRING_PATTERN = re.compile(r'(?i)(Parte recurrente/Solicitante:|'
 FACTUAL_GROUND_HEADER_PATTERN = re.compile(
     r'(F\s?U\s?N\s?D\s?A\s?M\s?E\s?N\s?T\s?O\s?S|RAZONAMIENTOS JURÍDICOS)')
 VERDICT_HEADER_PATTERN = re.compile(
-    r'(F\W?A\W?L\W?L|PARTE DISPOSITIVA|'
+    r'(F\s?A\s?L\s?L|PARTE DISPOSITIVA|'
     r'P A R T E D I S P O S I T I V A|firmamos)')
 LEGAL_COSTS_PATTERN = re.compile(r'\bno\W+(?:\w+\W+){1,6}?costas\b')
-VERDICT_RESULT_PATTERN = re.compile(r'(?i)\s(des)?estim\w+')
+VERDICT_RESULT_PATTERN = re.compile(
+    r'(?i)\W(des)?estim\w+\s(parcial|en\sparte)?')
 
 FACTUAL_BACKGROUND_HEADER = 'ANTECEDENTES DE HECHO'
 KEYPHRASE_TITLE = 'Cuestiones'
@@ -48,6 +49,8 @@ class JurisdictionPreprocessor():
 
         # Extract valuable information from document into dictionary
         dict_information = self.extract_information_from_doc(text)
+
+        # NOTE: Create func to clean page numeration and JURISPRUDENCIA words
 
         # Add url to doc into document information
         dict_information["doc_url"] = url_doc
@@ -161,11 +164,11 @@ class JurisdictionPreprocessor():
         if match_verdict_result:
             verdict_result_txt = match_verdict_result.group().lower()
             if 'des' in verdict_result_txt:
-                result = 'D'  # 'Desfavorable' (Unfavorable)
-            elif 'parcial' in verdict_result_txt:
-                result = 'EP'  # 'Efectos Parciales' (Partial Effects)
+                result = 'D'
+            elif ' par' in verdict_result_txt:
+                result = 'EP'
             else:
-                result = 'E'  # 'Favorable' (Favorable)
+                result = 'E'
         else:
             result = INFO_NOT_FOUND_STRING
 
@@ -261,7 +264,8 @@ class JurisdictionPreprocessor():
 
         # Verdict argumentation
         if match_last_verdict:
-            dict_info["verdict_arguments"] = doc[match_last_verdict.span()[1]:]
+            dict_info["verdict_arguments"] = \
+                doc[match_last_verdict.span()[0] + background_end_position:]
 
         # Final Verdict Result
         dict_info["last_verdict"] = self.retrieve_verdict_result(
