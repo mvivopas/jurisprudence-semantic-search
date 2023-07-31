@@ -72,7 +72,7 @@ class JurisdictionPreprocessor():
         dict_information = self.extract_information_from_doc(text)
 
         # Add document url into document information dictionary
-        dict_information["url"] = url_doc
+        dict_information["link"] = url_doc
 
         # Tokenize and lemmatize saved sections
         for sec in LONG_SECTIONS:
@@ -291,7 +291,7 @@ class JurisdictionPreprocessor():
 
         # Retrieve CENDOJ id
         cendoj_id_match = CENDOJ_ID_PATTERN.search(doc).group()
-        dict_info["id_cendoj"] = cendoj_id_match
+        dict_info["cendoj_id"] = cendoj_id_match
 
         # Retrieve Litigation Date
         date_match = DATE_PATTERN.search(doc).group(1)
