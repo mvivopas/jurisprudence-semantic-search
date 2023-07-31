@@ -1,12 +1,10 @@
 import io
 import re
-import string
 from typing import Optional
 
 import nltk
 import requests
 import spacy
-from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from pdfminer3.converter import TextConverter
 from pdfminer3.layout import LAParams
@@ -59,8 +57,11 @@ BASIC_CLEANING_PATTERNS = [(re.compile(r'\n\n\d{1,2}\n\n\x0c'), ''),
 
 class JurisdictionPreprocessor():
     def __init__(self):
-        # define nlp object as lemmatizer
+        # Load the language model
         self.nlp = spacy.load('es_core_news_sm')
+        # Initialize the language model to load the lemmatizer data
+        self.nlp.initialize()
+        # Replace the pipe
         self.nlp.replace_pipe("lemmatizer", "es.lemmatizer")
 
     def __call__(self, url_doc):
@@ -383,12 +384,9 @@ class JurisdictionPreprocessor():
         and lemmatizes it.
 
         The following text processing steps are performed on the input `text`:
-        1. Imports Spanish stopwords and discards the word 'no' from the set.
-        2. Adds punctuation to the stopwords set.
-        3. Tokenizes the text into individual words.
-        4. Removes any token that is in the stopwords set.
-        5. Lemmatizes the remaining tokens using the spaCy NLP library.
-        6. Joins the lemmatized tokens back into a single string.
+        1. Tokenizes the text into individual words.
+        2. Lemmatizes the remaining tokens using the spaCy NLP library.
+        3. Joins the lemmatized tokens back into a single string.
 
         Parameters:
             text (str): The input text to be tokenized, cleaned, and lemmatized
@@ -397,14 +395,9 @@ class JurisdictionPreprocessor():
             str: The lemmatized text after tokenization, stopword removal,
             and lemmatization.
         """
-        # Import Spanish stopwords
-        spanish_stopwords = set(stopwords.words('spanish'))
-        spanish_stopwords.discard("no")
-        # Add punctuation to stopwords
-        stop = set(spanish_stopwords + list(string.punctuation))
         # Lower words and tokenize
         # Keep word if not in stopword list
-        tokens = [i for i in word_tokenize(text.lower()) if i not in stop]
+        tokens = [i for i in word_tokenize(text.lower())]
         # Word lemmatization
         lemma_words = [word.lemma_ for word in self.nlp(' '.join(tokens))]
         # Join into a string
