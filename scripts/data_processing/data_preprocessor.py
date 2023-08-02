@@ -13,6 +13,9 @@ from pdfminer3.pdfpage import PDFPage
 
 nltk.download('stopwords')
 
+# Spacy model name to use
+SPACY_MODEL_NAME = 'es_core_news_md'
+
 # Assignation string when info is not found
 INFO_NOT_FOUND_STRING = 'Not provided'
 
@@ -57,12 +60,9 @@ BASIC_CLEANING_PATTERNS = [(re.compile(r'\n\n\d{1,2}\n\n\x0c'), ''),
 
 class JurisdictionPreprocessor():
     def __init__(self):
-        # Load the language model
-        self.nlp = spacy.load('es_core_news_sm')
-        # Initialize the language model to load the lemmatizer data
+        # Load the spacy model that will work as lemmatizer
+        self.nlp = spacy.load(SPACY_MODEL_NAME)
         self.nlp.initialize()
-        # Replace the pipe
-        self.nlp.replace_pipe("lemmatizer", "es.lemmatizer")
 
     def __call__(self, url_doc):
 
@@ -365,8 +365,10 @@ class JurisdictionPreprocessor():
 
             # Perform basic text cleaning operations
             last_verdict = self.text_cleaning(last_verdict)
+        else:
+            last_verdict = INFO_NOT_FOUND_STRING
 
-            dict_info["verdict_arguments"] = last_verdict
+        dict_info["verdict_arguments"] = last_verdict
 
         # Final Verdict Result
         dict_info["last_verdict"] = self.retrieve_verdict_result(
