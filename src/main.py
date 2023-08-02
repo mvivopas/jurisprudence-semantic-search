@@ -1,5 +1,6 @@
 import json
 
+import numpy as np
 import pandas as pd
 
 from models.tfidf_model import TFIDFModel
@@ -20,8 +21,11 @@ def main():
     # scrappe data
     scrapper = JurisdictionScrapper()
     links_set = scrapper(**args["scrapper"])
+    links_set = np.ravel(
+        np.load(args["scrapper"]["output_path_pdf_links"],
+                allow_pickle=True))[0]
 
-    # preprocess data
+    # # preprocess data
     preprocessor = JurisdictionPreprocessor()
     list_of_dict_info = [preprocessor(link_doc) for link_doc in links_set]
     df_records = pd.DataFrame(list_of_dict_info)
@@ -30,20 +34,23 @@ def main():
     sqlite_table_path = args["db"]["sqlite_table_path"]
     db_manager = JurisdictionDataBaseManager()
 
-    # create table and insert data
+    # # create table and insert data
     db_manager("sqlite", sqlite_table_path, df_records)
 
-    # we are using fundamentos for the similarity search
-    data = df_records["clean_fundamentos"].tolist()
+    # we are using summary of last trial + new trial for the similarity search
+    background_data = df_records["factual_background"].tolist()
+    ground_data = df_records["factual_grounds"].tolist()
+    data_2_vectorize = [a + f for a, f in zip(background_data, ground_data)]
+
     pg_tables_path = args["db"]
     # generate TF-IDF model and vectors and save
     tfidf_model = TFIDFModel()
-    tfidf_model.fit_and_save(data,
+    tfidf_model.fit_and_save(data_2_vectorize,
                              table_path=pg_tables_path["pgv_tfidf_table_path"])
 
     # generate Word2Vec model and vectors and save
     w2v_model = Word2VecModel()
-    w2v_model.fit_and_save(data,
+    w2v_model.fit_and_save(data_2_vectorize,
                            table_path=pg_tables_path["pgv_w2v_table_path"])
 
 
