@@ -2,7 +2,6 @@ import io
 import re
 from typing import Optional
 
-import nltk
 import requests
 import spacy
 from nltk.tokenize import word_tokenize
@@ -11,57 +10,55 @@ from pdfminer3.layout import LAParams
 from pdfminer3.pdfinterp import PDFPageInterpreter, PDFResourceManager
 from pdfminer3.pdfpage import PDFPage
 
-nltk.download('stopwords')
-
-# Spacy model name to use
-SPACY_MODEL_NAME = 'es_core_news_md'
-
-# Assignation string when info is not found
-INFO_NOT_FOUND_STRING = 'Not provided'
-
-# Exact match strings to be found in doc
-FACTUAL_BACKGROUND_HEADER = 'ANTECEDENTES DE HECHO'
-KEYPHRASE_TITLE = 'Cuestiones'
-APELLANT_TITLE = 'Parte recurrida'
-
-# Long sections' key values to standardize
-LONG_SECTIONS = ["factual_background", "factual_grounds", "verdict_arguments"]
-
-# Regex patterns to find more irregular expressions in doc
-CENDOJ_ID_PATTERN = re.compile(r'\d{20}')
-DATE_PATTERN = re.compile(r'Fecha:\s(\d{2}/\d{2}/\d{4})')
-RECURRING_PATTERN = re.compile(r'(?i)(Parte recurrente/Solicitante:|'
-                               r'Parte recurrente|Procurador)')
-FACTUAL_GROUND_HEADER_PATTERN = re.compile(
-    r'(F\s?U\s?N\s?D\s?A\s?M\s?E\s?N\s?T\s?O\s?S|RAZONAMIENTOS JURÍDICOS)')
-VERDICT_HEADER_PATTERN = re.compile(
-    r'(F\s?A\s?L\s?L|PARTE DISPOSITIVA|'
-    r'P A R T E D I S P O S I T I V A|firmamos)')
-VERDICT_RESULT_PATTERN = re.compile(
-    r'(?i)\W(des)?estim\w+\s(parcial|en\sparte)?')
-
-LEGAL_COSTS_MATCHER = {
-    'C1':
-    re.compile(
-        r'(?i)(conden\w+|impo\w+|pago).{1,40}costas.{1,3}'
-        r'(de primera instancia|de la demanda reconvencional|del juicio)',
-        re.DOTALL),
-    'C2':
-    re.compile(
-        r'(conden\w+|impo\w+|pago).{1,15}costas.{1,10}(instancia|recurso)',
-        re.DOTALL),
-    'C1C2':
-    re.compile(r'(conden\w+|impo\w+|pago).{1,15}costas', re.DOTALL),
-}
-
-BASIC_CLEANING_PATTERNS = [(re.compile(r'\n\n\d{1,2}\n\n\x0c'), ''),
-                           ('JURISPRUDENCIA', ''), ('\n', ' ')]
-
 
 class JurisdictionPreprocessor():
+    # Spacy model name to use
+    SPACY_MODEL_NAME = 'es_core_news_md'
+
+    # Assignation string when info is not found
+    INFO_NOT_FOUND_STRING = 'Not provided'
+
+    # Exact match strings to be found in doc
+    FACTUAL_BACKGROUND_HEADER = 'ANTECEDENTES DE HECHO'
+    KEYPHRASE_TITLE = 'Cuestiones'
+    APELLANT_TITLE = 'Parte recurrida'
+
+    # Long sections' key values to standardize
+    LONG_SECTIONS = [
+        "factual_background", "factual_grounds", "verdict_arguments"
+    ]
+
+    # Regex patterns to find more irregular expressions in doc
+    CENDOJ_ID_PATTERN = re.compile(r'\d{20}')
+    DATE_PATTERN = re.compile(r'Fecha:\s(\d{2}/\d{2}/\d{4})')
+    RECURRING_PATTERN = re.compile(r'(?i)(Parte recurrente/Solicitante:|'
+                                   r'Parte recurrente|Procurador)')
+    FACTUAL_GROUND_HEADER_PATTERN = re.compile(
+        r'(F\s?U\s?N\s?D\s?A\s?M\s?E\s?N\s?T\s?O\s?S|RAZONAMIENTOS JURÍDICOS)')
+    VERDICT_HEADER_PATTERN = re.compile(
+        r'(F\s?A\s?L\s?L|PARTE DISPOSITIVA|'
+        r'P A R T E D I S P O S I T I V A|firmamos)')
+    VERDICT_RESULT_PATTERN = re.compile(
+        r'(?i)\W(des)?estim\w+\s(parcial|en\sparte)?')
+    LEGAL_COSTS_MATCHER = {
+        'C1':
+        re.compile(
+            r'(?i)(conden\w+|impo\w+|pago).{1,40}costas.{1,3}'
+            r'(de primera instancia|de la demanda reconvencional|del juicio)',
+            re.DOTALL),
+        'C2':
+        re.compile(
+            r'(conden\w+|impo\w+|pago).{1,15}costas.{1,10}(instancia|recurso)',
+            re.DOTALL),
+        'C1C2':
+        re.compile(r'(conden\w+|impo\w+|pago).{1,15}costas', re.DOTALL),
+    }
+    BASIC_CLEANING_PATTERNS = [(re.compile(r'\n\n\d{1,2}\n\n\x0c'), ''),
+                               ('JURISPRUDENCIA', ''), ('\n', ' ')]
+
     def __init__(self):
         # Load the spacy model that will work as lemmatizer
-        self.nlp = spacy.load(SPACY_MODEL_NAME)
+        self.nlp = spacy.load(JurisdictionPreprocessor.SPACY_MODEL_NAME)
         self.nlp.initialize()
 
     def __call__(self, url_doc):
@@ -75,10 +72,11 @@ class JurisdictionPreprocessor():
         # Add document url into document information dictionary
         dict_information["link"] = url_doc
 
+        # NOTE: do not standardize for now
         # Tokenize and lemmatize saved sections
-        for sec in LONG_SECTIONS:
-            std_sec = self.standardize_text(dict_information[sec])
-            dict_information[sec] = std_sec
+        # for sec in JurisdictionPreprocessor.LONG_SECTIONS:
+        #     std_sec = self.standardize_text(dict_information[sec])
+        #     dict_information[sec] = std_sec
 
         return dict_information
 
@@ -141,7 +139,7 @@ class JurisdictionPreprocessor():
             start_section = doc.find(section_name, 0)
 
             if start_section == -1:
-                return INFO_NOT_FOUND_STRING
+                return JurisdictionPreprocessor.INFO_NOT_FOUND_STRING
             else:
                 start_section += len(section_name)
 
@@ -180,7 +178,9 @@ class JurisdictionPreprocessor():
                  - If the verdict result is not found, returns
                         INFO_NOT_FOUND_STRING.
         """
-        match_verdict_result = VERDICT_RESULT_PATTERN.search(verdict_section)
+        match_verdict_result = \
+            JurisdictionPreprocessor.VERDICT_RESULT_PATTERN.search(
+                verdict_section)
 
         if match_verdict_result:
             verdict_result_txt = match_verdict_result.group().lower()
@@ -191,7 +191,7 @@ class JurisdictionPreprocessor():
             else:
                 result = 'E'
         else:
-            result = INFO_NOT_FOUND_STRING
+            result = JurisdictionPreprocessor.INFO_NOT_FOUND_STRING
 
         return result
 
@@ -214,7 +214,7 @@ class JurisdictionPreprocessor():
         clean_string = dirty_string
 
         # Apply basic cleaning patterns using regular expressions
-        for rm_pat, repl in BASIC_CLEANING_PATTERNS:
+        for rm_pat, repl in JurisdictionPreprocessor.BASIC_CLEANING_PATTERNS:
             clean_string = re.sub(rm_pat, repl, clean_string)
 
         return clean_string
@@ -240,8 +240,10 @@ class JurisdictionPreprocessor():
         # Match legal costs pattern
         result = ''
 
-        for pat in list(LEGAL_COSTS_MATCHER):
-            match_costs = LEGAL_COSTS_MATCHER[pat].search(section)
+        for pat in list(JurisdictionPreprocessor.LEGAL_COSTS_MATCHER):
+            match_costs = \
+                JurisdictionPreprocessor.LEGAL_COSTS_MATCHER[
+                    pat].search(section)
             if match_costs and (pat in ['C1', 'C2']
                                 or pat == 'C1C2' and result == ''):
                 # If not negated, proceed to assign costs
@@ -291,45 +293,50 @@ class JurisdictionPreprocessor():
         dict_info = dict()
 
         # Retrieve CENDOJ id
-        cendoj_id_match = CENDOJ_ID_PATTERN.search(doc).group()
+        cendoj_id_match = \
+            JurisdictionPreprocessor.CENDOJ_ID_PATTERN.search(doc).group()
         dict_info["cendoj_id"] = cendoj_id_match
 
         # Retrieve Litigation Date
-        date_match = DATE_PATTERN.search(doc).group(1)
+        date_match = JurisdictionPreprocessor.DATE_PATTERN.search(doc).group(1)
         dict_info["date"] = date_match
 
         # Retrieve Litigation Tematic
         dict_info["keyphrases"] = self.extract_section_content(
-            doc, section_name=KEYPHRASE_TITLE)
+            doc, section_name=JurisdictionPreprocessor.KEYPHRASE_TITLE)
 
         # Retrieve Recurrent Entity
-        recurring_ent_match = RECURRING_PATTERN.search(doc)
+        recurring_ent_match = \
+            JurisdictionPreprocessor.RECURRING_PATTERN.search(doc)
         if recurring_ent_match:
             rec_start_position = recurring_ent_match.span(1)[-1]
             recurring_ent_match = self.extract_section_content(
                 doc, section_start_pos=rec_start_position)
         else:
-            recurring_ent_match = INFO_NOT_FOUND_STRING
+            recurring_ent_match = \
+                JurisdictionPreprocessor.INFO_NOT_FOUND_STRING
 
         dict_info["recurring_part"] = recurring_ent_match
 
         # Retrieve Apellant Entity
         dict_info["appellant"] = self.extract_section_content(
-            doc, section_name=APELLANT_TITLE)
+            doc, section_name=JurisdictionPreprocessor.APELLANT_TITLE)
 
         # Factual Background section
-        match_new_facts = FACTUAL_GROUND_HEADER_PATTERN.search(doc)
+        match_new_facts = \
+            JurisdictionPreprocessor.FACTUAL_GROUND_HEADER_PATTERN.search(doc)
         if match_new_facts:
             background_end_position = match_new_facts.span()[0]
             factual_background = self.extract_section_content(
                 doc,
-                section_name=FACTUAL_BACKGROUND_HEADER,
+                section_name=JurisdictionPreprocessor.
+                FACTUAL_BACKGROUND_HEADER,
                 section_end_pos=background_end_position,
                 clean_text=False)
             # Perform basic text cleaning operations
             factual_background = self.text_cleaning(factual_background)
         else:
-            factual_background = INFO_NOT_FOUND_STRING
+            factual_background = JurisdictionPreprocessor.INFO_NOT_FOUND_STRING
 
         dict_info["factual_background"] = factual_background
 
@@ -338,8 +345,9 @@ class JurisdictionPreprocessor():
             dict_info["factual_background"])
 
         # Factual Ground section
-        match_last_verdict = VERDICT_HEADER_PATTERN.search(
-            doc[background_end_position:])
+        match_last_verdict = \
+            JurisdictionPreprocessor.VERDICT_HEADER_PATTERN.search(
+                doc[background_end_position:])
         if match_new_facts and match_last_verdict:
             # Obtain starn and end section positions from patterns
             new_facts_start_position = match_new_facts.span()[1]
@@ -353,7 +361,7 @@ class JurisdictionPreprocessor():
             # Perform basic text cleaning operations
             factual_grounds = self.text_cleaning(factual_grounds)
         else:
-            factual_grounds = INFO_NOT_FOUND_STRING
+            factual_grounds = JurisdictionPreprocessor.INFO_NOT_FOUND_STRING
 
         dict_info["factual_grounds"] = factual_grounds
 
@@ -366,7 +374,7 @@ class JurisdictionPreprocessor():
             # Perform basic text cleaning operations
             last_verdict = self.text_cleaning(last_verdict)
         else:
-            last_verdict = INFO_NOT_FOUND_STRING
+            last_verdict = JurisdictionPreprocessor.INFO_NOT_FOUND_STRING
 
         dict_info["verdict_arguments"] = last_verdict
 
