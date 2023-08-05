@@ -1,8 +1,4 @@
-# Jurisprudence Semantic Search Framework
-
-<div align="left">
-  <img src="images/logo_jss.png" alt="Repository Logo" style="border-radius: 50%; width: 60px; float: left; margin-right: 20px;">
-</div>
+# Jurisprudence Semantic Search Framework 📚🔦
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
@@ -54,23 +50,23 @@ Prepare the necessary data by running the data scraping and processing classes. 
 
 The Jurisprudence Semantic Search tool consists of several components, each serving a specific purpose:
 
-#### Data Scraping
+#### <u>Data Scraping</u>
 
 The `data_scraper.py` script handles the web scraping of jurisprudence documents from relevant sources.
 
-#### Text Processing
+#### <u>Text Processing</u>
 
 The `data_preprocessor.py` script extracts text from embedded PDF files, processes the textual data, and prepares it for vectorization.
 
-#### Data Storage
+#### <u>Data Storage</u>
 
 The `data_storage.py` script stores the processed textual data into the PostgreSQL and SQLite databases.
 
-#### Vectorization Models
+#### <u>Vectorization Models</u>
 
 The models folder contains classes for different vectorization techniques, such as TF-IDF and Word2Vec.
 
-#### Semantic Search Interface
+#### <u>Semantic Search Interface</u>
 
 The generate_app.py script allows users to perform similarity searches within the corpus using the pre-trained vector representations.
 
