@@ -45,13 +45,13 @@ $ conda create --name juris python=3.10
 $ conda activate juris
 ````
 
-3. Install the required dependencies using pip:
+4. Install the required dependencies using pip:
 
 ````bash
 $ pip install -r requirements.txt
 ````
 
-4. Set up PostgreSQL
+5. Set up PostgreSQL
 
 ````bash
 # Install using brew
@@ -85,80 +85,64 @@ Once PostgreSQL is working properly and a new user and database are created, to 
 $ pg_ctl -D /opt/homebrew/var/postgresql@14 -o "-p 5433" -U myuser start
 ````
 
-5. Install SQLite
+6. Install SQLite
 
 ````bash
 $ brew install sqlite
 ````
 
+7. Create a `database_secrets.json` in the repository root with content:
 
-## Usage
-
-The Jurisprudence Semantic Search tool consists of several components, each serving a specific purpose:
-
-### <u>Data Scraping</u>
-
-The `data_scraper.py` script handles the web scraping of jurisprudence documents from relevant sources.
-
-### <u>Text Processing</u>
-
-The `data_preprocessor.py` script extracts text from embedded PDF files, processes the textual data, and prepares it for vectorization.
-
-### <u>Data Storage</u>
-
-The `data_storage.py` script stores the processed textual data into the PostgreSQL and SQLite databases.
-
-### <u>Vectorization Models</u>
-
-The models folder contains classes for different vectorization techniques, such as TF-IDF and Word2Vec.
-
-### <u>Semantic Search Interface</u>
-
-The generate_app.py script allows users to perform similarity searches within the corpus using the pre-trained vector representations.
-
-To execute the entire workflow, run the main.py script located in the src folder. This script will execute data scraping, text processing, data storage, and vectorization sequentially.
-
-````bash
-python src/main.py
 ````
-
-The script will save the vector representations of the documents into the respective tables in the databases.
+{
+   "database_name":"mydatabase",
+   "port": 5433,
+   "user": "myuser",
+   "password": "pass"
+}
+````
 
 ## File Structure
 
-The repository has the following file structure:
+The repository has the following organization:
 
 ````
 - db/
     - postgresql/
     - sqlite/
 - models/
-    - tfidf.py
-    - word2vec.py
+    - tfidf_model.py
+    - word2vec_model.py
+    - utils.py
+    - config.yaml
 - scripts/
     - generate_app.py
-- data_processing/
-    - data_scraper.py
-    - data_preprocessor.py
-    - data_storage.py
+    - data_processing/
+        - data_scrapper.py
+        - data_preprocessor.py
+        - data_storage.py
 - src/
     - main.py
-- config.yaml
-- utils.py
 - requirements.txt
 - README.md
 - arguments.json
 ````
 
 - `db/`: Contains folders for PostgreSQL and SQLite scripts to generate required tables.
-- `models/`: Contains vectorization classes for TF-IDF and Word2Vec.
-- `scripts/`: Holds the interface script generate_app.py for similarity search.
-- `data_processing/`: Contains classes for data scraping, text processing, and data storage.
-- `src/`: Contains the main script main.py that executes the entire workflow.
-- `config.yaml`: Configuration file for setting model parameters.
-- `utils.py`: Shared utility functions.
+- `models/`: Contains vectorization classes for TF-IDF and Word2Vec models. Also an _utils_ script with shared functions and a _config_ file that contains model parameter settings.
+- `scripts/`: Holds the interface script generate_app.py to start the similarity search enginee. Also contains data scrapping, processing and storage classes inside _data_processing_ folder.
+   - `data_scrapper.py`: 
+   - `data_preprocessor.py`:
+   - `data_storage.py`
+- `src/`: Contains the _main_ script that executes the entire workflow to retrieve and save the data, fit the models and store the vector representations.
 - `requirements.txt`: List of dependencies needed to run the tool.
-- `arguments.`json: JSON file containing parameters used in main.py.
+- `arguments.json`: JSON file containing parameters used in main.py.
+
+
+## Usage
+
+The Jurisprudence Semantic Search tool consists of several components, each serving a specific purpose:
+
 
 ## Contributing
 
