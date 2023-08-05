@@ -1,7 +1,7 @@
 # Jurisprudence Semantic Search Framework
 
-<div align="center">
-  <img src="images/logo_jss.png" alt="Repository Logo" style="border-radius: 50%;">
+<div align="left">
+  <img src="images/logo_jss.png" alt="Repository Logo" style="border-radius: 50%; width: 60px; float: left; margin-right: 20px;">
 </div>
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
@@ -86,7 +86,7 @@ The script will save the vector representations of the documents into the respec
 
 The repository has the following file structure:
 
-````diff
+````
 - db/
     - postgresql/
     - sqlite/
