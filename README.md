@@ -28,45 +28,91 @@ To set up the Jurisprudence Semantic Search tool on your local machine, follow t
 1. Clone the repository:
 
 ````bash
-git clone https://github.com/your-username/jurisprudence-semantic-search.git
+$ git clone https://github.com/your-username/jurisprudence-semantic-search.git
 ````
 
 2. Navigate to the repository directory:
 
 ````bash
-cd jurisprudence-semantic-search
+$ cd jurisprudence-semantic-search
+````
+
+3. Create a virtual environment with python 3.10
+
+````bash
+# Create environment using conda
+$ conda create --name juris python=3.10
+$ conda activate juris
 ````
 
 3. Install the required dependencies using pip:
 
 ````bash
-pip install -r requirements.txt
+$ pip install -r requirements.txt
 ````
 
-Set up the PostgreSQL and SQLite databases by running the scripts in the db folder. Please ensure you have both PostgreSQL and SQLite installed and configured on your system.
-Prepare the necessary data by running the data scraping and processing classes. Modify the parameters in the arguments.json file as needed.
+4. Set up PostgreSQL
+
+````bash
+# Install using brew
+$ brew install postgresql@14
+
+# Run Server, I am using port 5433 but feel free to use another if
+# this one is occupied in your PC
+$ pg_ctl -D /opt/homebrew/var/postgresql@14 -o "-p 5433" start
+
+# Start psql and open database postgres
+$ psql postgres
+
+# Create a role (user) with permissions to login (LOGIN) and create databases (CREATEDB)
+postgres-# CREATE ROLE myuser WITH LOGIN;
+postgres-# ALTER ROLE myuser CREATEDB;
+
+# Quit psql
+postgres-# \q
+
+# On shell, open psql with postgres database with new user:
+$ psql postgres -U myuser
+
+# Create a database and grant all privileges to the user
+postgres-> CREATE DATABASE mydatabase;
+postgres-> GRANT ALL PRIVILEGES ON DATABASE mydatabase TO myuser;
+````
+
+Once PostgreSQL is working properly and a new user and database are created, to perform transactions with vectorial representations (inserts and selects), we will have to be connected to the server via the following command:
+
+````bash
+$ pg_ctl -D /opt/homebrew/var/postgresql@14 -o "-p 5433" -U myuser start
+````
+
+5. Install SQLite
+
+````bash
+$ brew install sqlite
+````
+
 
 ## Usage
 
 The Jurisprudence Semantic Search tool consists of several components, each serving a specific purpose:
 
-#### <u>Data Scraping</u>
+### <u>Data Scraping</u>
 
 The `data_scraper.py` script handles the web scraping of jurisprudence documents from relevant sources.
 
-#### <u>Text Processing</u>
+### <u>Text Processing</u>
 
 The `data_preprocessor.py` script extracts text from embedded PDF files, processes the textual data, and prepares it for vectorization.
 
-#### <u>Data Storage</u>
+### <u>Data Storage</u>
 
 The `data_storage.py` script stores the processed textual data into the PostgreSQL and SQLite databases.
 
-#### <u>Vectorization Models</u>
+### <u>Vectorization Models</u>
 
 The models folder contains classes for different vectorization techniques, such as TF-IDF and Word2Vec.
 
-#### <u>Semantic Search Interface</u>
+### <u>Semantic Search Interface</u>
 
 The generate_app.py script allows users to perform similarity searches within the corpus using the pre-trained vector representations.
 
