@@ -142,7 +142,29 @@ The repository has the following organization:
 
 ## Usage
 
-The Jurisprudence Semantic Search tool consists of several components, each serving a specific purpose:
+To generate the aforementioned search enginee the steps to follow are:
+
+1. Start PostgreSQL server
+
+````bash
+$ pg_ctl -D /opt/homebrew/var/postgresql@14 -o "-p 5433" -U myuser start
+````
+
+2. Customize the `arguments.json` file with the desired information you want to fill the data base with: textual query to obtain a jurisprudence tematic, date, number of searches...
+
+3. Run the _main_ script
+
+````bash
+$ python main.py
+````
+
+4. Then simply run the interface script
+
+````bash
+$ python scripts/generate_app.py
+````
+
+And start performing queries to the enginee!
 
 
 ## Contributing
