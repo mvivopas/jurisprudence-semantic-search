@@ -130,10 +130,11 @@ The repository has the following organization:
 
 - `db/`: Contains folders for PostgreSQL and SQLite scripts to generate required tables.
 - `models/`: Contains vectorization classes for TF-IDF and Word2Vec models. Also an _utils_ script with shared functions and a _config_ file that contains model parameter settings.
-- `scripts/`: Holds the interface script generate_app.py to start the similarity search enginee. Also contains data scrapping, processing and storage classes inside _data_processing_ folder.
-   - `data_scrapper.py`: 
-   - `data_preprocessor.py`:
-   - `data_storage.py`
+- `scripts/`: Contains the class scripts responsible of the retrieval, processing and storage of the data, as well as the script that holds the interface that works as a similarity search enginee.
+   - `generate_app.py`: Starts a streamlit server, given a number of parameters, converts a textual query into a vectorial representation, compares it to the stored document representations and retrieves the most similar ones.
+   - `data_scrapper.py`: Scrapes the CENDOJ platform retrieving all links to jurisprudence related to the parameters set in the _arguments_ file.
+   - `data_preprocessor.py`: Extracts all text embedded in the link to the PDF and therefore selects and organizes relevant information to be saved. 
+   - `data_storage.py`: Save all processed data in form of string and int into an SQLite database. Also helps easing transactions related to the database. Is used also for the same process but for the vectorial representations in PostgreSQL database.
 - `src/`: Contains the _main_ script that executes the entire workflow to retrieve and save the data, fit the models and store the vector representations.
 - `requirements.txt`: List of dependencies needed to run the tool.
 - `arguments.json`: JSON file containing parameters used in main.py.
