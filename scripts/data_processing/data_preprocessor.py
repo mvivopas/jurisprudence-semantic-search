@@ -1,14 +1,12 @@
-import io
 import re
+import shutil
+import tempfile
 from typing import Optional
 
+import fitz
 import requests
 import spacy
 from nltk.tokenize import word_tokenize
-from pdfminer3.converter import TextConverter
-from pdfminer3.layout import LAParams
-from pdfminer3.pdfinterp import PDFPageInterpreter, PDFResourceManager
-from pdfminer3.pdfpage import PDFPage
 
 
 class JurisdictionPreprocessor():
@@ -80,9 +78,32 @@ class JurisdictionPreprocessor():
 
         return dict_information
 
+    def download_pdf(self, url: str) -> str:
+        """
+        Download a PDF from a given URL and return the local
+        path to the downloaded PDF.
+
+        Parameters:
+            url (str): The URL of the PDF to be downloaded.
+
+        Returns:
+            str: The local path to the downloaded PDF.
+        """
+        # get url information
+        response = requests.get(url)
+        # create a temporal directory to store pdf
+        temp_dir = tempfile.mkdtemp()
+        pdf_path = f"{temp_dir}/downloaded.pdf"
+
+        # write pdf textual information into temporal file
+        with open(pdf_path, "wb") as pdf_file:
+            pdf_file.write(response.content)
+
+        return pdf_path, temp_dir
+
     def extract_text_from_link(self, url: str) -> str:
         """
-        Extracts text from a PDF URL.
+        Extract text from a PDF URL.
 
         Parameters:
             url (str): The URL of the PDF to extract text from.
@@ -90,32 +111,22 @@ class JurisdictionPreprocessor():
         Returns:
             str: The extracted text from the PDF.
         """
-        resource_manager = PDFResourceManager()
+        pdf_path, temp_dir = self.download_pdf(url)
 
-        fake_file_handle = io.StringIO()
+        pdf_document = fitz.open(pdf_path)
+        extracted_text = ""
 
-        converter = TextConverter(resource_manager,
-                                  fake_file_handle,
-                                  laparams=LAParams())
+        for page_num in range(pdf_document.page_count):
+            page = pdf_document[page_num]
+            page_text = page.get_text("text")
+            extracted_text += page_text
 
-        page_interpreter = PDFPageInterpreter(resource_manager, converter)
+        pdf_document.close()
 
-        response = requests.get(url)
-        f = io.BytesIO(response.content)
+        # Clean up downloaded PDF from temporal dir
+        shutil.rmtree(temp_dir)
 
-        with f as fh:
-            for page in PDFPage.get_pages(fh,
-                                          caching=True,
-                                          check_extractable=True):
-
-                page_interpreter.process_page(page)
-
-            doc = fake_file_handle.getvalue()
-
-        converter.close()
-        fake_file_handle.close()
-
-        return doc
+        return extracted_text
 
     def extract_section_content(self,
                                 doc: str,
