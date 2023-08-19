@@ -7,6 +7,7 @@ import fitz
 import requests
 import spacy
 from nltk.tokenize import word_tokenize
+from pandas import DataFrame
 
 
 class JurisdictionPreprocessor():
@@ -59,8 +60,17 @@ class JurisdictionPreprocessor():
         self.nlp = spacy.load(JurisdictionPreprocessor.SPACY_MODEL_NAME)
         self.nlp.initialize()
 
-    def __call__(self, url_doc):
+    def __call__(self, doc_batch):
 
+        list_of_dict_info = [
+            self.preprocess_document_url(url) for url in doc_batch
+        ]
+
+        df_records = DataFrame(list_of_dict_info)
+
+        return df_records
+
+    def preprocess_document_url(self, url_doc):
         # Extract text from PDF url
         text = self.extract_text_from_link(url_doc)
 

@@ -7,6 +7,10 @@
         "output_path_general_links": "data/raw/data_general_links.npy",
         "output_path_pdf_links": "data/raw/data_pdf_links.npy"
         },
+    "preprocessor":
+    {
+        "batch_size": 50
+    },
     "db":
         {
             "schema_name": "jurisprudence.db",

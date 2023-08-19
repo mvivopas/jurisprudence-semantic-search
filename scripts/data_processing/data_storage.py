@@ -17,15 +17,28 @@ class JurisdictionDataBaseManager():
         self.generate_connection(conn_type)
 
         # create table for processed data
-        self.create_table(table_path)
+        # self.create_table(table_path)
+
+        # NOTE: Verify connectio exists !
 
         table_name = os.path.basename(table_path).replace('.sql', '')
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' "
+                       f"AND name='{table_name}'")
+        existing_table = cursor.fetchone()
+
         try:
             if type(data) is DataFrame:
+                if existing_table:
+                    table_exists = 'append'
+                else:
+                    table_exists = 'replace'
+
                 data.to_sql(table_name,
                             self.connection,
-                            if_exists='replace',
+                            if_exists=table_exists,
                             index=False)
+
             else:
                 self.insert_embeddings_into_pgvector_table(table_name, data)
 
