@@ -1,6 +1,7 @@
 # Web Scraping from dynamic platform: CENDOJ
 
 import os
+import random
 import re
 from typing import Tuple
 
@@ -19,6 +20,8 @@ from webdriver_manager.microsoft import EdgeChromiumDriverManager
 # in one search
 NUM_REQUESTS = 20
 ROOT_URL = "https://www.poderjudicial.es"
+ROTATING_IP_ADRESSES_FILE = "data/http_proxies.txt"
+
 month_to_num = {
     "enero": '01',
     "febrero": '02',
@@ -38,12 +41,13 @@ month_to_num = {
 class JurisdictionScrapper():
     def __init__(self):
 
+        # load rotating ips
+        with open(ROTATING_IP_ADRESSES_FILE, 'r') as file:
+            self.proxies = file.readlines()
+
         # initialize driver's service and options
         self.edge_service = EdgeService(
             executable_path=EdgeChromiumDriverManager().install())
-
-        self.option = EdgeOptions()
-        self.option.add_argument("start-maximized")
 
     def __call__(self, date: str, textual_query: str, num_searches: int,
                  output_path_general_links: str,
@@ -74,7 +78,7 @@ class JurisdictionScrapper():
 
             date, elements = self.get_general_links_to_juris(
                 root=ROOT_URL,
-                name=textual_query,
+                juris_topic=textual_query,
                 num_requests=NUM_REQUESTS,
                 date=date,
                 fecha_state=state)
@@ -96,8 +100,6 @@ class JurisdictionScrapper():
         pdf_links_array = np.array(pdf_links)
         np.save(output_path_pdf_links, pdf_links_array, allow_pickle=True)
 
-        return links_set
-
     def init_driver(self) -> EdgeDriver:
         """
         Initialize and return a WebDriver instance.
@@ -105,6 +107,13 @@ class JurisdictionScrapper():
         Returns:
         WebDriver: A WebDriver instance for web scraping.
         """
+        self.option = EdgeOptions()
+        self.option.add_argument("start-maximized")
+
+        # Get a random proxy server from the list.
+        proxy_ip = random.choice(self.proxies).removesuffix('\n')
+        self.option.add_argument("--proxy-server={}".format(proxy_ip))
+
         driver = EdgeDriver(service=self.edge_service, options=self.option)
         return driver
 
