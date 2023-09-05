@@ -108,10 +108,10 @@ class JurisdictionScrapper():
                 with open(LAST_DATE_FILE_PATH, 'w') as f:
                     json.dump(dict_date_round, f)
 
-            general_links_array = np.array(links_set)
-            np.save(output_path_general_links,
-                    general_links_array,
-                    allow_pickle=True)
+                general_links_array = np.array(links_set)
+                np.save(output_path_general_links,
+                        general_links_array,
+                        allow_pickle=True)
 
         else:
             links_set = list(
