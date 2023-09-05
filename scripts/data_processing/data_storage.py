@@ -21,17 +21,17 @@ class JurisdictionDataBaseManager():
 
         # NOTE: Verify connection exists !
 
-        table_name = os.path.basename(table_path).replace('.sql', '')
-
         try:
             if type(data) is DataFrame:
 
-                data.to_sql(table_name,
+                data.to_sql(table_path,
                             self.connection,
                             if_exists='append',
                             index=False)
 
             else:
+                table_name = os.path.basename(table_path).replace('.sql', '')
+
                 self.insert_embeddings_into_pgvector_table(table_name, data)
 
             self.connection.commit()

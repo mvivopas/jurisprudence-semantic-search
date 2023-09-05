@@ -3,6 +3,7 @@
 import os
 import random
 import re
+from multiprocessing.dummy import Pool
 from typing import Tuple
 
 import numpy as np
@@ -19,8 +20,9 @@ from webdriver_manager.microsoft import EdgeChromiumDriverManager
 # num requests will always be 4 as it is the maximum number of pages
 # in one search
 NUM_REQUESTS = 20
+NUM_PARALLEL_PROCS = 4
 ROOT_URL = "https://www.poderjudicial.es"
-ROTATING_IP_ADRESSES_FILE = "data/http_proxies.txt"
+ROTATING_USER_AGENTS_FILE = "data/user_agents.txt"
 
 month_to_num = {
     "enero": '01',
@@ -41,9 +43,9 @@ month_to_num = {
 class JurisdictionScrapper():
     def __init__(self):
 
-        # load rotating ips
-        with open(ROTATING_IP_ADRESSES_FILE, 'r') as file:
-            self.proxies = file.readlines()
+        # load user agents
+        with open(ROTATING_USER_AGENTS_FILE, 'r') as file:
+            self.agents = file.readlines()
 
         # initialize driver's service and options
         self.edge_service = EdgeService(
@@ -86,18 +88,55 @@ class JurisdictionScrapper():
             for element in elements:
                 links_set.add(element)
 
-        geral_links_array = np.array(links_set)
+        general_links_array = np.array(links_set)
         np.save(output_path_general_links,
-                geral_links_array,
+                general_links_array,
                 allow_pickle=True)
 
-        pdf_links = set()
-        for lk in links_set:
-            pdf_base_lk = self.get_link_to_pdf_juris(lk)
-            pdf_final_lk = ROOT_URL + pdf_base_lk.replace('amp;', '')
-            pdf_links.add(pdf_final_lk)
+        links_set = list(
+            np.ravel(np.load(output_path_general_links, allow_pickle=True))[0])
 
-        pdf_links_array = np.array(pdf_links)
+        self.pdf_links = set()
+        self.parallel_link_extraction(links_set, output_path_pdf_links)
+
+    def link_extraction(self, lk: str) -> None:
+        """
+        Extract links from a given URL and add them to the set.
+
+        Args:
+            lk (str): The URL from which to extract the link.
+        """
+        # Retrieve link
+        pdf_base_lk = self.get_link_to_pdf_juris(lk)
+
+        # Clean and generate final link
+        pdf_final_lk = ROOT_URL + pdf_base_lk.replace('amp;', '')
+
+        # Save link into set
+        self.pdf_links.add(pdf_final_lk)
+
+    def parallel_link_extraction(self, links_set: set,
+                                 output_path_pdf_links: str) -> None:
+        """
+        Extract links from a set of URLs in parallel and save them to a file.
+
+        Args:
+            links_set (set): A set of URLs to extract links from.
+            output_path_pdf_links (str): The path to save the extracted
+                links to.
+        """
+        # Create a pool of worker processes
+        pool = Pool(NUM_PARALLEL_PROCS)
+
+        # Use the pool to extract links in parallel
+        pool.map(self.link_extraction, links_set)
+
+        # Close the pool and wait for all processes to finish
+        pool.close()
+        pool.join()
+
+        # Save the extracted links to a file
+        pdf_links_array = np.array(self.pdf_links)
         np.save(output_path_pdf_links, pdf_links_array, allow_pickle=True)
 
     def init_driver(self) -> EdgeDriver:
@@ -109,12 +148,18 @@ class JurisdictionScrapper():
         """
         self.option = EdgeOptions()
         self.option.add_argument("start-maximized")
+        self.option.add_argument(
+            '--disable-blink-features=AutomationControlled')
+        self.option.add_experimental_option("excludeSwitches",
+                                            ["enable-automation"])
+        self.option.add_experimental_option('useAutomationExtension', False)
 
-        # Get a random proxy server from the list.
-        proxy_ip = random.choice(self.proxies).removesuffix('\n')
-        self.option.add_argument("--proxy-server={}".format(proxy_ip))
+        random_agent = random.choice(self.agents).removesuffix('\n')
 
         driver = EdgeDriver(service=self.edge_service, options=self.option)
+        driver.execute_cdp_cmd('Network.setUserAgentOverride',
+                               {"userAgent": random_agent})
+
         return driver
 
     def get_general_link_href(self, element: WebElement) -> str:
