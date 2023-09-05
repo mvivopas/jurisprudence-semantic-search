@@ -1,5 +1,6 @@
 # Web Scraping from dynamic platform: CENDOJ
 
+import json
 import os
 import random
 import re
@@ -23,6 +24,7 @@ NUM_REQUESTS = 20
 NUM_PARALLEL_PROCS = 4
 ROOT_URL = "https://www.poderjudicial.es"
 ROTATING_USER_AGENTS_FILE = "data/user_agents.txt"
+LAST_DATE_FILE_PATH = "data/last_date.json"
 
 month_to_num = {
     "enero": '01',
@@ -51,14 +53,16 @@ class JurisdictionScrapper():
         self.edge_service = EdgeService(
             executable_path=EdgeChromiumDriverManager().install())
 
-    def __call__(self, date: str, textual_query: str, num_searches: int,
-                 output_path_general_links: str,
+    def __call__(self, scrape_mode: str, date: str, textual_query: str,
+                 num_searches: int, output_path_general_links: str,
                  output_path_pdf_links: str) -> set[str]:
         """
         Scrape general and PDF links to jurisprudences based on the
         given parameters.
 
         Parameters:
+        scrape_mode (str): The scape mode: use "all_links" to scrape from the
+        begging and "final_links" if general links are already saved.
         date (str): The date for filtering jurisprudences.
         textual_query (str): The query text to search for in jurisprudences.
         num_searches (int): The number of pagination requests to make.
@@ -69,32 +73,50 @@ class JurisdictionScrapper():
         Returns:
         set[str]: A set of unique general links to jurisprudences.
         """
+        if scrape_mode == "all_links":
+            links_set = set()
+            set_date = None
 
-        links_set = set()
-        for i in range(num_searches):
+            # if last date file exists then use last date
+            if os.path.exists(LAST_DATE_FILE_PATH):
 
-            if i == 0:
-                state = False
-            else:
-                state = True
+                with open(LAST_DATE_FILE_PATH, 'r') as file:
+                    resume_info = json.load(file)
 
-            date, elements = self.get_general_links_to_juris(
-                root=ROOT_URL,
-                juris_topic=textual_query,
-                num_requests=NUM_REQUESTS,
-                date=date,
-                fecha_state=state)
+                date, last_i = list(resume_info.values())
+                num_searches = num_searches - (last_i + 1)
+                set_date = True
 
-            for element in elements:
-                links_set.add(element)
+            for i in range(num_searches):
 
-        general_links_array = np.array(links_set)
-        np.save(output_path_general_links,
-                general_links_array,
-                allow_pickle=True)
+                if i == 0 and set_date is None:
+                    set_date = False
+                else:
+                    set_date = True
 
-        links_set = list(
-            np.ravel(np.load(output_path_general_links, allow_pickle=True))[0])
+                date, elements = self.get_general_links_to_juris(
+                    root=ROOT_URL,
+                    juris_topic=textual_query,
+                    num_requests=NUM_REQUESTS,
+                    date=date,
+                    set_date=set_date)
+
+                for element in elements:
+                    links_set.add(element)
+
+                dict_date_round = {"date": date, "round": i}
+                with open(LAST_DATE_FILE_PATH, 'w') as f:
+                    json.dump(dict_date_round, f)
+
+            general_links_array = np.array(links_set)
+            np.save(output_path_general_links,
+                    general_links_array,
+                    allow_pickle=True)
+
+        else:
+            links_set = list(
+                np.ravel(np.load(output_path_general_links,
+                                 allow_pickle=True))[0])
 
         self.pdf_links = set()
         self.parallel_link_extraction(links_set, output_path_pdf_links)
@@ -238,7 +260,7 @@ class JurisdictionScrapper():
                                    juris_topic: str,
                                    num_requests: int,
                                    date: str,
-                                   fecha_state: bool = False) \
+                                   set_date: bool = False) \
             -> Tuple[str, list[str]]:
         """
         Retrieves links to jurisprudence pdf in web based on the given
@@ -249,7 +271,7 @@ class JurisdictionScrapper():
         juris_topic (str): The topic of jurisprudences to search for.
         num_requests (int): The number of pagination requests to make.
         date (str): The date for filtering jurisprudences.
-        fecha_state (bool, optional): Whether to set the date for filtering.
+        set_date (bool, optional): Whether to set the date for filtering.
                                       Defaults to False.
 
         Returns:
@@ -321,7 +343,7 @@ class JurisdictionScrapper():
                 (By.XPATH, "(//button[@id='COMUNIDADmultiselec'])"))).click()
 
         # Set date
-        if fecha_state:
+        if set_date:
             fecha = driver.find_element(
                 By.ID, "frmBusquedajurisprudencia_FECHARESOLUCIONHASTA")
             fecha.send_keys(date)
