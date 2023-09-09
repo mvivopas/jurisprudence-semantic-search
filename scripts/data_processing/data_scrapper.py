@@ -3,6 +3,7 @@
 import json
 import os
 import random
+import sqlite3
 import re
 from multiprocessing.dummy import Pool
 from typing import List, Tuple
@@ -29,6 +30,7 @@ ROOT_URL = "https://www.poderjudicial.es"
 ROTATING_USER_AGENTS_FILE = "data/user_agents.txt"
 LAST_DATE_FILE_PATH = "data/last_date.json"
 ARGS_PATH = "arguments.json"
+VECTOR_DB_SECRETS = "database_secrets.json"
 
 month_to_num = {
     "enero": '01',
@@ -61,8 +63,12 @@ class JurisdictionScrapper():
         with open(ARGS_PATH) as f:
             args = json.load(f)
 
-        self.sqlite_table_path = args["db"]["sqlite_juris_table_path"]
+        self.sqlite_table_path = args["db"]["sqlite_links_table_path"]
         self.db_manager = JurisdictionDataBaseManager()
+
+        # load db secrets
+        with open(VECTOR_DB_SECRETS) as f:
+            self.db_args = json.load(f)
 
     def __call__(self, scrape_mode: str, date: str, textual_query: str,
                  num_searches: int, output_path_general_links: str,
@@ -133,8 +139,25 @@ class JurisdictionScrapper():
         else:
             link_set = self.load_np_array(output_path_general_links)
 
-        self.pdf_links = set()
-        self.parallel_link_extraction(link_set, output_path_pdf_links)
+        if os.path.exists(self.db_args['database_name']):
+            self.db_manager.generate_connection("sqlite")
+            cur = self.db_manager.connection.cursor()
+            res = cur.execute("SELECT name FROM sqlite_master")
+            tables = list(sum(res.fetchall(), ()))
+
+            if self.sqlite_table_path in tables:
+                base_urls = self.db_manager.get_query_data(
+                    f"SELECT base_url FROM {self.sqlite_table_path}")
+                base_urls = list(sum(base_urls, ()))
+                
+                link_set = link_set - set(base_urls)
+
+
+        for lk in link_set:
+            self.link_extraction(lk)
+
+        # self.pdf_links = set()
+        # self.parallel_link_extraction(link_set, output_path_pdf_links)
 
     def load_np_array(self, path: str) -> List:
         return set(list(np.ravel(np.load(path, allow_pickle=True))[0]))
@@ -151,7 +174,8 @@ class JurisdictionScrapper():
 
         # Clean and generate final link
         pdf_final_lk = ROOT_URL + pdf_base_lk.replace('amp;', '')
-        df_url = pd.DataFrame([pdf_final_lk], columns=['url'])
+        df_url = pd.DataFrame(list(zip([lk], [pdf_final_lk])),
+                              columns=['base_url', 'final_url'])
 
         self.db_manager("sqlite", self.sqlite_table_path, df_url)
 
