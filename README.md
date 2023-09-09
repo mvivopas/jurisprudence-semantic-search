@@ -2,7 +2,7 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-This repository aims to reproduce all work from my [master's thesis](https://drive.google.com/file/d/17ZPYt94DdkMGd2I7hXkwi6o6qnQ9B0aa/view?usp=sharing). For an in-depth explanation of the project, refer to [this post](https://mvivopas.github.io/2023/09/07/jurisprudence-project.html).
+> This repository aims to reproduce all work from my [master's thesis](https://drive.google.com/file/d/17ZPYt94DdkMGd2I7hXkwi6o6qnQ9B0aa/view?usp=sharing). For an in-depth explanation of the project, refer to [this post](https://mvivopas.github.io/2023/09/07/jurisprudence-project.html).
 
 **Jurisprudence Semantic Search** is a GitHub repository that houses a semantic search tool for legal documents. This tool allows users to perform similarity searches within a corpus of legal documents based on different vectorization techniques. It provides functionalities for data scraping, text processing, and vectorization, along with an interface to perform similarity searches.
 
