@@ -84,7 +84,8 @@ class JurisdictionScrapper():
                     resume_info = json.load(file)
 
                 date, last_i = list(resume_info.values())
-                num_searches = num_searches - (last_i + 1)
+                last_i_incr = last_i + 1
+                num_searches = num_searches - last_i_incr
                 set_date = True
 
             for i in range(num_searches):
@@ -104,7 +105,7 @@ class JurisdictionScrapper():
                 for element in elements:
                     links_set.add(element)
 
-                dict_date_round = {"date": date, "round": i}
+                dict_date_round = {"date": date, "round": i + last_i_incr}
                 with open(LAST_DATE_FILE_PATH, 'w') as f:
                     json.dump(dict_date_round, f)
 
