@@ -5,7 +5,7 @@ import os
 import random
 import re
 from multiprocessing.dummy import Pool
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -85,7 +85,6 @@ class JurisdictionScrapper():
         set[str]: A set of unique general links to jurisprudences.
         """
         if scrape_mode == "all_links":
-            links_set = set()
             set_date = None
 
             # if last date file exists then use last date
@@ -98,6 +97,12 @@ class JurisdictionScrapper():
                 last_i_incr = last_i + 1
                 num_searches = num_searches - last_i_incr
                 set_date = True
+
+                link_set = self.load_np_array(output_path_general_links)
+
+            else:
+                link_set = set()
+                last_i_incr = 0
 
             for i in range(num_searches):
 
@@ -114,24 +119,25 @@ class JurisdictionScrapper():
                     set_date=set_date)
 
                 for element in elements:
-                    links_set.add(element)
+                    link_set.add(element)
 
                 dict_date_round = {"date": date, "round": i + last_i_incr}
                 with open(LAST_DATE_FILE_PATH, 'w') as f:
                     json.dump(dict_date_round, f)
 
-                general_links_array = np.array(links_set)
+                general_links_array = np.array(link_set)
                 np.save(output_path_general_links,
                         general_links_array,
                         allow_pickle=True)
 
         else:
-            links_set = list(
-                np.ravel(np.load(output_path_general_links,
-                                 allow_pickle=True))[0])
+            link_set = self.load_np_array(output_path_general_links)
 
         self.pdf_links = set()
-        self.parallel_link_extraction(links_set, output_path_pdf_links)
+        self.parallel_link_extraction(link_set, output_path_pdf_links)
+
+    def load_np_array(self, path: str) -> List:
+        return set(list(np.ravel(np.load(path, allow_pickle=True))[0]))
 
     def link_extraction(self, lk: str) -> None:
         """
