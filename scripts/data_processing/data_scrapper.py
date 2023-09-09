@@ -92,7 +92,8 @@ class JurisdictionScrapper():
         if scrape_mode == "all_links":
             set_date = None
 
-            # if last date file exists then use last date
+            # if last date file exists then use last date and last round to
+            # resume scraping
             if os.path.exists(LAST_DATE_FILE_PATH):
 
                 with open(LAST_DATE_FILE_PATH, 'r') as file:
@@ -105,6 +106,7 @@ class JurisdictionScrapper():
 
                 link_set = self.load_np_array(output_path_general_links)
 
+            # otherwise initialize variables
             else:
                 link_set = set()
                 last_i_incr = 0
@@ -126,10 +128,12 @@ class JurisdictionScrapper():
                 for element in elements:
                     link_set.add(element)
 
+                # save last date and round
                 dict_date_round = {"date": date, "round": i + last_i_incr}
                 with open(LAST_DATE_FILE_PATH, 'w') as f:
                     json.dump(dict_date_round, f)
 
+                # save batch of scraped links plus previous loaded if any
                 general_links_array = np.array(link_set)
                 np.save(output_path_general_links,
                         general_links_array,
@@ -138,12 +142,16 @@ class JurisdictionScrapper():
         else:
             link_set = self.load_np_array(output_path_general_links)
 
+        # for the second part, check if any links already in the database
         if os.path.exists(self.db_args['database_name']):
+            # generate connection
             self.db_manager.generate_connection("sqlite")
             cur = self.db_manager.connection.cursor()
+            # get tables
             res = cur.execute("SELECT name FROM sqlite_master")
             tables = list(sum(res.fetchall(), ()))
 
+            # if table exists, get base_urls and remove them from link_set
             if self.sqlite_table_path in tables:
                 base_urls = self.db_manager.get_query_data(
                     f"SELECT base_url FROM {self.sqlite_table_path}")
@@ -151,11 +159,9 @@ class JurisdictionScrapper():
 
                 link_set = link_set - set(base_urls)
 
+        # extract remaining final pdf links
         for lk in link_set:
             self.link_extraction(lk)
-
-        # self.pdf_links = set()
-        # self.parallel_link_extraction(link_set, output_path_pdf_links)
 
     def load_np_array(self, path: str) -> List:
         return set(list(np.ravel(np.load(path, allow_pickle=True))[0]))
