@@ -3,7 +3,6 @@
 import json
 import os
 import random
-import sqlite3
 import re
 from multiprocessing.dummy import Pool
 from typing import List, Tuple
@@ -149,9 +148,8 @@ class JurisdictionScrapper():
                 base_urls = self.db_manager.get_query_data(
                     f"SELECT base_url FROM {self.sqlite_table_path}")
                 base_urls = list(sum(base_urls, ()))
-                
-                link_set = link_set - set(base_urls)
 
+                link_set = link_set - set(base_urls)
 
         for lk in link_set:
             self.link_extraction(lk)
