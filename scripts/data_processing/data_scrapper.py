@@ -8,6 +8,7 @@ from multiprocessing.dummy import Pool
 from typing import Tuple
 
 import numpy as np
+import pandas as pd
 from selenium.webdriver import Edge as EdgeDriver
 from selenium.webdriver import EdgeOptions
 from selenium.webdriver.common.by import By
@@ -18,6 +19,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
 
+from scripts.data_processing.data_storage import JurisdictionDataBaseManager
+
 # num requests will always be 4 as it is the maximum number of pages
 # in one search
 NUM_REQUESTS = 20
@@ -25,6 +28,7 @@ NUM_PARALLEL_PROCS = 4
 ROOT_URL = "https://www.poderjudicial.es"
 ROTATING_USER_AGENTS_FILE = "data/user_agents.txt"
 LAST_DATE_FILE_PATH = "data/last_date.json"
+ARGS_PATH = "arguments.json"
 
 month_to_num = {
     "enero": '01',
@@ -52,6 +56,13 @@ class JurisdictionScrapper():
         # initialize driver's service and options
         self.edge_service = EdgeService(
             executable_path=EdgeChromiumDriverManager().install())
+
+        # load scrapper arguments
+        with open(ARGS_PATH) as f:
+            args = json.load(f)
+
+        self.sqlite_table_path = args["db"]["sqlite_juris_table_path"]
+        self.db_manager = JurisdictionDataBaseManager()
 
     def __call__(self, scrape_mode: str, date: str, textual_query: str,
                  num_searches: int, output_path_general_links: str,
@@ -134,9 +145,9 @@ class JurisdictionScrapper():
 
         # Clean and generate final link
         pdf_final_lk = ROOT_URL + pdf_base_lk.replace('amp;', '')
+        df_url = pd.DataFrame([pdf_final_lk], columns=['url'])
 
-        # Save link into set
-        self.pdf_links.add(pdf_final_lk)
+        self.db_manager("sqlite", self.sqlite_table_path, df_url)
 
     def parallel_link_extraction(self, links_set: set,
                                  output_path_pdf_links: str) -> None:
@@ -157,10 +168,6 @@ class JurisdictionScrapper():
         # Close the pool and wait for all processes to finish
         pool.close()
         pool.join()
-
-        # Save the extracted links to a file
-        pdf_links_array = np.array(self.pdf_links)
-        np.save(output_path_pdf_links, pdf_links_array, allow_pickle=True)
 
     def init_driver(self) -> EdgeDriver:
         """
