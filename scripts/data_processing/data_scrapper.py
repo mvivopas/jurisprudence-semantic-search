@@ -4,7 +4,6 @@ import json
 import os
 import random
 import re
-from multiprocessing.dummy import Pool
 from typing import List, Tuple
 
 import numpy as np
@@ -68,6 +67,9 @@ class JurisdictionScrapper():
         # load db secrets
         with open(VECTOR_DB_SECRETS) as f:
             self.db_args = json.load(f)
+
+        self.n_fails = 0
+        self.n_success = 0
 
     def __call__(self, scrape_mode: str, date: str, textual_query: str,
                  num_searches: int, output_path_general_links: str,
@@ -176,32 +178,20 @@ class JurisdictionScrapper():
         # Retrieve link
         pdf_base_lk = self.get_link_to_pdf_juris(lk)
 
+        # If no link is found, return
+        if not pdf_base_lk:
+            return
+        else:
+            self.n_success += 1
+
+        print(f"Success: {self.n_success} | Fails: {self.n_fails}")
+
         # Clean and generate final link
         pdf_final_lk = ROOT_URL + pdf_base_lk.replace('amp;', '')
         df_url = pd.DataFrame(list(zip([lk], [pdf_final_lk])),
                               columns=['base_url', 'final_url'])
 
         self.db_manager("sqlite", self.sqlite_table_path, df_url)
-
-    def parallel_link_extraction(self, links_set: set,
-                                 output_path_pdf_links: str) -> None:
-        """
-        Extract links from a set of URLs in parallel and save them to a file.
-
-        Args:
-            links_set (set): A set of URLs to extract links from.
-            output_path_pdf_links (str): The path to save the extracted
-                links to.
-        """
-        # Create a pool of worker processes
-        pool = Pool(NUM_PARALLEL_PROCS)
-
-        # Use the pool to extract links in parallel
-        pool.map(self.link_extraction, links_set)
-
-        # Close the pool and wait for all processes to finish
-        pool.close()
-        pool.join()
 
     def init_driver(self) -> EdgeDriver:
         """
@@ -260,14 +250,25 @@ class JurisdictionScrapper():
 
         driver.get(general_link)
 
-        # deactivate pop-up window
-        wait.until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, "button.close"))).click()
+        # Wait for the pop-up window to be clickable
+        try:
+            pop_up_close_button = wait.until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "button.close")))
+            pop_up_close_button.click()
+        except Exception:
+            # Handle the exception if the pop-up does not appear
+            # or the button is not clickable
+            print("Exception occurred while closing the pop-up")
+            self.n_fails += 1
 
-        # get link to jurisprudence pdf
-        pdf_box_element = driver.find_element(By.ID, "objtcontentpdf")
-        link = self.get_general_link_href(pdf_box_element)
+        try:
+            # get link to jurisprudence pdf
+            pdf_box_element = driver.find_element(By.ID, "objtcontentpdf")
+            link = self.get_general_link_href(pdf_box_element)
+        except Exception:
+            print("Exception occurred while searching for objtcontentpdf")
+            link = None
+            self.n_fails += 1
 
         driver.quit()
         return link
