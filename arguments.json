@@ -1,8 +1,8 @@
 {
     "scrapper":
         {
-        "scrape_mode": "all_links",
-        "year": "2020",
+        "scrape_mode": "final_links",
+        "date": "01/01/2020",
         "textual_query": "clausulas abusivas",
         "num_searches": 2,
         "output_path_general_links": "data/raw/data_general_links.npy"

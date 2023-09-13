@@ -71,7 +71,7 @@ class JurisdictionScrapper():
         self.n_fails = 0
         self.n_success = 0
 
-    def __call__(self, scrape_mode: str, year: str, textual_query: str,
+    def __call__(self, scrape_mode: str, date: str, textual_query: str,
                  num_searches: int,
                  output_path_general_links: str) -> set[str]:
         """
@@ -91,7 +91,8 @@ class JurisdictionScrapper():
         set[str]: A set of unique general links to jurisprudences.
         """
         if scrape_mode == "all_links":
-            date = ["01/01/" + year, "31/12/" + year]
+            date_year = date.split('/')[-1]
+            date = ["01/01/" + date_year, date]
 
             # if last date file exists then use last date and last round to
             # resume scraping
