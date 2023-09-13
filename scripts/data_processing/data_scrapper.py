@@ -71,9 +71,9 @@ class JurisdictionScrapper():
         self.n_fails = 0
         self.n_success = 0
 
-    def __call__(self, scrape_mode: str, date: str, textual_query: str,
-                 num_searches: int, output_path_general_links: str,
-                 output_path_pdf_links: str) -> set[str]:
+    def __call__(self, scrape_mode: str, year: str, textual_query: str,
+                 num_searches: int,
+                 output_path_general_links: str) -> set[str]:
         """
         Scrape general and PDF links to jurisprudences based on the
         given parameters.
@@ -86,13 +86,12 @@ class JurisdictionScrapper():
         num_searches (int): The number of pagination requests to make.
         output_path_general_links (str): The file path to save the general
         links.
-        output_path_pdf_links (str): The file path to save the PDF links.
 
         Returns:
         set[str]: A set of unique general links to jurisprudences.
         """
         if scrape_mode == "all_links":
-            set_date = None
+            date = ["01/01/" + year, "31/12/" + year]
 
             # if last date file exists then use last date and last round to
             # resume scraping
@@ -101,10 +100,10 @@ class JurisdictionScrapper():
                 with open(LAST_DATE_FILE_PATH, 'r') as file:
                     resume_info = json.load(file)
 
-                date, last_i = list(resume_info.values())
+                new_end_date, last_i = list(resume_info.values())
+                date[1] = new_end_date
                 last_i_incr = last_i + 1
                 num_searches = num_searches - last_i_incr
-                set_date = True
 
                 link_set = self.load_np_array(output_path_general_links)
 
@@ -115,23 +114,22 @@ class JurisdictionScrapper():
 
             for i in range(num_searches):
 
-                if i == 0 and set_date is None:
-                    set_date = False
-                else:
-                    set_date = True
-
-                date, elements = self.get_general_links_to_juris(
+                new_end_date, elements = self.get_general_links_to_juris(
                     root=ROOT_URL,
                     juris_topic=textual_query,
                     num_requests=NUM_REQUESTS,
-                    date=date,
-                    set_date=set_date)
+                    date=date)
+
+                date[1] = new_end_date
 
                 for element in elements:
                     link_set.add(element)
 
                 # save last date and round
-                dict_date_round = {"date": date, "round": i + last_i_incr}
+                dict_date_round = {
+                    "date": new_end_date,
+                    "round": i + last_i_incr
+                }
                 with open(LAST_DATE_FILE_PATH, 'w') as f:
                     json.dump(dict_date_round, f)
 
@@ -302,8 +300,7 @@ class JurisdictionScrapper():
                                    root: str,
                                    juris_topic: str,
                                    num_requests: int,
-                                   date: str,
-                                   set_date: bool = False) \
+                                   date: str) \
             -> Tuple[str, list[str]]:
         """
         Retrieves links to jurisprudence pdf in web based on the given
@@ -314,8 +311,6 @@ class JurisdictionScrapper():
         juris_topic (str): The topic of jurisprudences to search for.
         num_requests (int): The number of pagination requests to make.
         date (str): The date for filtering jurisprudences.
-        set_date (bool, optional): Whether to set the date for filtering.
-                                      Defaults to False.
 
         Returns:
         Tuple[str, List[str]]: A tuple containing the last jurisprudence date
@@ -386,10 +381,12 @@ class JurisdictionScrapper():
                 (By.XPATH, "(//button[@id='COMUNIDADmultiselec'])"))).click()
 
         # Set date
-        if set_date:
-            fecha = driver.find_element(
-                By.ID, "frmBusquedajurisprudencia_FECHARESOLUCIONHASTA")
-            fecha.send_keys(date)
+        fecha = driver.find_element(
+            By.ID, "frmBusquedajurisprudencia_FECHARESOLUCIONDESDE")
+        fecha.send_keys(date[0])
+        fecha = driver.find_element(
+            By.ID, "frmBusquedajurisprudencia_FECHARESOLUCIONHASTA")
+        fecha.send_keys(date[1])
 
         # Set topic and search
         search = driver.find_element(By.ID, "frmBusquedajurisprudencia_TEXT")

@@ -2,11 +2,10 @@
     "scrapper":
         {
         "scrape_mode": "all_links",
-        "date": "10/12/2020",
+        "year": "2020",
         "textual_query": "clausulas abusivas",
-        "num_searches": 3,
-        "output_path_general_links": "data/raw/data_general_links.npy",
-        "output_path_pdf_links": "data/raw/data_pdf_links.npy"
+        "num_searches": 2,
+        "output_path_general_links": "data/raw/data_general_links.npy"
         },
     "preprocessor":
     {
@@ -15,8 +14,8 @@
     "db":
         {
             "schema_name": "jurisprudence.db",
-            "sqlite_juris_table_path": "data/jurisprudence.sql",
-            "sqlite_links_table_path": "data/juris_urls.sql",
+            "sqlite_juris_table_path": "jurisprudence_info",
+            "sqlite_links_table_path": "jurisprudence_urls",
             "pgv_tfidf_table_path": "db/pgvector/tfidf.sql",
             "pgv_w2v_table_path": "db/pgvector/wordvector.sql"
         }
