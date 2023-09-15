@@ -1,3 +1,4 @@
+import random
 import re
 import shutil
 import tempfile
@@ -8,6 +9,8 @@ import requests
 import spacy
 from nltk.tokenize import word_tokenize
 from pandas import DataFrame
+
+ROTATING_USER_AGENTS_FILE = "data/user_agents.txt"
 
 
 class JurisdictionPreprocessor():
@@ -56,6 +59,10 @@ class JurisdictionPreprocessor():
                                ('JURISPRUDENCIA', ''), ('\n', ' ')]
 
     def __init__(self):
+        # load user agents
+        with open(ROTATING_USER_AGENTS_FILE, 'r') as file:
+            self.agents = file.readlines()
+
         # Load the spacy model that will work as lemmatizer
         self.nlp = spacy.load(JurisdictionPreprocessor.SPACY_MODEL_NAME)
         self.nlp.initialize()
@@ -73,6 +80,9 @@ class JurisdictionPreprocessor():
     def preprocess_document_url(self, url_doc):
         # Extract text from PDF url
         text = self.extract_text_from_link(url_doc)
+
+        if text is None:
+            return None
 
         # Extract valuable information from document into dictionary
         dict_information = self.extract_information_from_doc(text)
@@ -99,17 +109,33 @@ class JurisdictionPreprocessor():
         Returns:
             str: The local path to the downloaded PDF.
         """
+        # get random user agent
+        random_agent = random.choice(self.agents).removesuffix('\n')
+        # create headers with the selected user agent
+        headers = {
+            "User-Agent": random_agent,
+        }
         # get url information
-        response = requests.get(url)
-        # create a temporal directory to store pdf
-        temp_dir = tempfile.mkdtemp()
-        pdf_path = f"{temp_dir}/downloaded.pdf"
+        response = requests.get(url, headers=headers)
 
-        # write pdf textual information into temporal file
-        with open(pdf_path, "wb") as pdf_file:
-            pdf_file.write(response.content)
+        # Check if the request was successful
+        if response.status_code == 200:
+            # create a temporal directory to store pdf
+            temp_dir = tempfile.mkdtemp()
+            pdf_path = f"{temp_dir}/downloaded.pdf"
 
-        return pdf_path, temp_dir
+            # write pdf textual information into temporal file
+            with open(pdf_path, "wb") as pdf_file:
+                pdf_file.write(response.content)
+
+            return pdf_path, temp_dir
+
+        else:
+            # Handle the case where the request was not successful
+            print(f"Failed to download PDF from {url}."
+                  f"Status code: {response.status_code}")
+
+            return None, None
 
     def extract_text_from_link(self, url: str) -> str:
         """
@@ -123,15 +149,23 @@ class JurisdictionPreprocessor():
         """
         pdf_path, temp_dir = self.download_pdf(url)
 
-        pdf_document = fitz.open(pdf_path)
-        extracted_text = ""
+        if pdf_path is None:
+            return None
 
-        for page_num in range(pdf_document.page_count):
-            page = pdf_document[page_num]
-            page_text = page.get_text("text")
-            extracted_text += page_text
+        try:
+            pdf_document = fitz.open(pdf_path)
+            extracted_text = ""
 
-        pdf_document.close()
+            for page_num in range(pdf_document.page_count):
+                page = pdf_document[page_num]
+                page_text = page.get_text("text")
+                extracted_text += page_text
+
+            pdf_document.close()
+
+        except fitz.fitz.FileDataError:
+            print("Error openining PDF")
+            extracted_text = None
 
         # Clean up downloaded PDF from temporal dir
         shutil.rmtree(temp_dir)
@@ -357,6 +391,7 @@ class JurisdictionPreprocessor():
             # Perform basic text cleaning operations
             factual_background = self.text_cleaning(factual_background)
         else:
+            background_end_position = 0
             factual_background = JurisdictionPreprocessor.INFO_NOT_FOUND_STRING
 
         dict_info["factual_background"] = factual_background
