@@ -1,7 +1,9 @@
+import json
 import random
 import re
 import shutil
 import tempfile
+from multiprocessing import Pool, cpu_count
 from typing import Optional
 
 import fitz
@@ -10,6 +12,9 @@ import spacy
 from nltk.tokenize import word_tokenize
 from pandas import DataFrame
 
+from scripts.data_processing.data_storage import JurisdictionDataBaseManager
+
+ARGS_PATH = "arguments.json"
 ROTATING_USER_AGENTS_FILE = "data/user_agents.txt"
 
 
@@ -59,6 +64,14 @@ class JurisdictionPreprocessor():
                                ('JURISPRUDENCIA', ''), ('\n', ' ')]
 
     def __init__(self):
+        # load scrapper arguments
+        with open(ARGS_PATH) as f:
+            args = json.load(f)
+
+        # init storage method
+        self.sqlite_table_path = args["db"]["sqlite_juris_table_path"]
+        self.db_manager = JurisdictionDataBaseManager()
+
         # load user agents
         with open(ROTATING_USER_AGENTS_FILE, 'r') as file:
             self.agents = file.readlines()
@@ -67,15 +80,51 @@ class JurisdictionPreprocessor():
         self.nlp = spacy.load(JurisdictionPreprocessor.SPACY_MODEL_NAME)
         self.nlp.initialize()
 
-    def __call__(self, doc_batch):
+    def __call__(self, links_set: list, batch_size: int):
 
+        success_rate = {"n_success": 0, "n_failed": 0}
+
+        # Split the links_set into batches
+        batches = [
+            links_set[i:i + batch_size]
+            for i in range(0, len(links_set), batch_size)
+        ]
+
+        # Create a multiprocessing pool to parallelize the processing & saving
+        pool = Pool(processes=cpu_count())
+
+        # Process and save batches in parallel
+        pool.starmap(self.process_and_save_batch,
+                     [(self.sqlite_table_path, batch, success_rate)
+                      for batch in batches])
+
+        # Close the multiprocessing pool
+        pool.close()
+        pool.join()
+
+    def process_and_save_batch(self, doc_batch, table_path: str,
+                               success_rate: dict) -> None:
+        """
+        todo
+        """
+        # Preprocess batch of documents
         list_of_dict_info = [
             self.preprocess_document_url(url) for url in doc_batch
         ]
 
         df_records = DataFrame(list_of_dict_info)
 
-        return df_records
+        if df_records is None:
+            success_rate['n_failed'] += 1
+        else:
+            # Save batch
+            db_manager = JurisdictionDataBaseManager()
+            db_manager("sqlite", table_path, df_records)
+
+            success_rate['n_success'] += 1
+
+        print(f"Success: {success_rate['n_success']} | "
+              f"Fails: {success_rate['n_failed']}")
 
     def preprocess_document_url(self, url_doc):
         # Extract text from PDF url
