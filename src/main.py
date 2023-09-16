@@ -10,7 +10,6 @@ ARGS_PATH = "arguments.json"
 
 
 def main():
-
     # load scrapper arguments
     with open(ARGS_PATH) as f:
         args = json.load(f)
@@ -35,7 +34,8 @@ def main():
     # retrieve back/ground data to generate the vector representation
     db_manager.generate_connection("sqlite")
     records = db_manager.load_data_from_table(
-        "sentence", "factual_background,factual_grounds")
+        "sentence", "factual_background,factual_grounds"
+    )
 
     # we are using summary of last trial + new trial for the similarity search
     data_2_vectorize = [a + f for a, f in records]
@@ -43,14 +43,16 @@ def main():
     pg_tables_path = args["db"]
     # generate TF-IDF model and vectors and save
     tfidf_model = TFIDFModel()
-    tfidf_model.fit_and_save(data_2_vectorize,
-                             table_path=pg_tables_path["pgv_tfidf_table_path"])
+    tfidf_model.fit_and_save(
+        data_2_vectorize, table_path=pg_tables_path["pgv_tfidf_table_path"]
+    )
 
     # generate Word2Vec model and vectors and save
     w2v_model = Word2VecModel()
-    w2v_model.fit_and_save(data_2_vectorize,
-                           table_path=pg_tables_path["pgv_w2v_table_path"])
+    w2v_model.fit_and_save(
+        data_2_vectorize, table_path=pg_tables_path["pgv_w2v_table_path"]
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

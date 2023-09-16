@@ -8,7 +8,7 @@ from pandas import DataFrame
 VECTOR_DB_SECRETS = "database_secrets.json"
 
 
-class JurisdictionDataBaseManager():
+class JurisdictionDataBaseManager:
     def __init__(self):
         pass
 
@@ -23,14 +23,12 @@ class JurisdictionDataBaseManager():
 
         try:
             if type(data) is DataFrame:
-
-                data.to_sql(table_path,
-                            self.connection,
-                            if_exists='append',
-                            index=False)
+                data.to_sql(
+                    table_path, self.connection, if_exists="append", index=False
+                )
 
             else:
-                table_name = os.path.basename(table_path).replace('.sql', '')
+                table_name = os.path.basename(table_path).replace(".sql", "")
 
                 self.insert_embeddings_into_pgvector_table(table_name, data)
 
@@ -61,7 +59,7 @@ class JurisdictionDataBaseManager():
     def create_table(self, table_path):
         cursor = self.connection.cursor()
 
-        with open(table_path, 'r') as handle:
+        with open(table_path, "r") as handle:
             cursor.execute(handle.read())
 
         cursor.close()
@@ -76,7 +74,7 @@ class JurisdictionDataBaseManager():
 
     def load_data_from_table(self, table_name, columns, condition_ids=None):
         if condition_ids:
-            str_ids = ','.join(map(str, condition_ids))
+            str_ids = ",".join(map(str, condition_ids))
             condition_query = f"WHERE id IN ({str_ids})"
         else:
             condition_query = ""

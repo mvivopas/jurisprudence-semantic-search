@@ -75,8 +75,9 @@ def streamlit_app():
 
     new_document = st.text_input("Enter a new document:")
 
-    uploaded_file = st.file_uploader("Upload a PDF or Word document",
-                                     type=["pdf", "docx"])
+    uploaded_file = st.file_uploader(
+        "Upload a PDF or Word document", type=["pdf", "docx"]
+    )
 
     number_results = st.text_input("Enter the number of results [1 - 50]:")
 
@@ -98,12 +99,14 @@ def streamlit_app():
                 elif file_extension == "docx":
                     new_document = extract_text_from_docx(tmp_file.name)
                 else:
-                    st.error("Invalid file format. "
-                             "Only PDF and DOCX files are supported.")
+                    st.error(
+                        "Invalid file format. " "Only PDF and DOCX files are supported."
+                    )
                     return
 
-        top_k_ids = perform_similarity_search(category, model, new_document,
-                                              number_results)
+        top_k_ids = perform_similarity_search(
+            category, model, new_document, number_results
+        )
 
         # retrieve document information for top results
         results = db_sqlite.load_data_from_table("sentence", "*", top_k_ids)
